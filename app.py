@@ -1,5 +1,6 @@
 import streamlit as st
 
+from rag.chains import generate_answer
 from rag.loader import load_markdown_documents
 from rag.retriever import keyword_retrieve
 from rag.splitter import split_documents
@@ -59,7 +60,6 @@ if mode == "知识库问答":
             retrieval_chunks = split_documents(documents)
             results = keyword_retrieve(question, retrieval_chunks, top_k=3)
 
-            st.info("暂不调用大模型，当前仅展示关键词检索结果。")
             st.write(f"当前问题：{question}")
 
             if results:
@@ -75,6 +75,11 @@ if mode == "知识库问答":
                         if len(result["content"]) > 300:
                             preview += "..."
                         st.text(preview)
+
+                st.markdown("### AI 生成回答")
+                with st.spinner("正在基于检索片段生成回答..."):
+                    answer = generate_answer(question, results)
+                st.markdown(answer)
             else:
                 st.warning("暂未从知识库中检索到相关资料。")
         else:
