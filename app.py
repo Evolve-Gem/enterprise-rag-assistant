@@ -1,6 +1,7 @@
 import streamlit as st
 
 from rag.loader import load_markdown_documents
+from rag.splitter import split_documents
 
 
 st.set_page_config(page_title="企业知识库 RAG 智能助手", page_icon="📚")
@@ -9,6 +10,7 @@ st.title("企业知识库 RAG 智能助手")
 st.caption("企业资料问答、客户需求分析与售前方案生成的最小可运行入口。")
 
 documents = load_markdown_documents("knowledge_base")
+chunks = split_documents(documents)
 
 st.subheader("当前知识库资料")
 st.write(f"当前读取到 {len(documents)} 个文档。")
@@ -25,6 +27,22 @@ if documents:
             st.text(preview)
 else:
     st.warning("未读取到知识库文档，请确认 knowledge_base 目录下存在 .md 文件。")
+
+st.subheader("文本切分预览")
+st.write(f"当前生成 {len(chunks)} 个 chunk。")
+
+if chunks:
+    for chunk in chunks[:5]:
+        with st.expander(f"{chunk['chunk_id']} · {chunk['char_count']} 字"):
+            st.markdown(f"**chunk_id：** `{chunk['chunk_id']}`")
+            st.markdown(f"**来源文档：** {chunk['source_title']}")
+            st.markdown(f"**字符数：** {chunk['char_count']}")
+            preview = chunk["content"][:300]
+            if len(chunk["content"]) > 300:
+                preview += "..."
+            st.text(preview)
+else:
+    st.warning("未生成文本切分结果，请确认知识库文档内容不为空。")
 
 mode = st.radio(
     "请选择工作模式",
