@@ -1,6 +1,6 @@
 import streamlit as st
 
-from rag.chains import generate_answer, generate_solution
+from rag.chains import analyze_requirement, generate_answer, generate_solution
 from rag.loader import load_markdown_documents
 from rag.retriever import keyword_retrieve
 from rag.splitter import split_documents
@@ -92,10 +92,15 @@ else:
     )
     if st.button("生成方案"):
         if requirement.strip():
+            st.write(f"当前需求：{requirement}")
+
+            st.markdown("### AI 客户需求解析")
+            with st.spinner("正在解析客户需求..."):
+                requirement_analysis = analyze_requirement(requirement)
+            st.markdown(requirement_analysis)
+
             solution_chunks = split_documents(documents)
             results = keyword_retrieve(requirement, solution_chunks, top_k=3)
-
-            st.write(f"当前需求：{requirement}")
 
             if results:
                 st.markdown("### 匹配到的方案参考资料")

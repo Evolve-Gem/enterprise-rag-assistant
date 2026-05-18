@@ -96,6 +96,66 @@ def answer_question(question: str) -> str:
     return "知识库问答功能将在后续阶段接入。"
 
 
+def analyze_requirement(requirement: str) -> str:
+    """Analyze customer requirements for presales solution work."""
+    requirement = requirement.strip()
+    if not requirement:
+        return "请输入客户需求。"
+
+    try:
+        from dotenv import load_dotenv
+        from openai import OpenAI
+    except ImportError as exc:
+        return f"缺少必要依赖：{exc.name}，请确认 requirements.txt 中的依赖已安装。"
+
+    load_dotenv()
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        return (
+            "未检测到 DEEPSEEK_API_KEY。请在项目根目录创建 .env 文件，"
+            "并写入 DEEPSEEK_API_KEY=你的 API Key 后重试。"
+        )
+
+    system_prompt = (
+        "你是技术销售 / 解决方案工程师，擅长在售前阶段"
+        "对客户需求进行简洁、专业、结构化的分析。"
+        "请基于客户输入进行需求解析，不要虚构客户没有提到的信息。"
+        "输出必须包含：1. 客户类型；2. 业务场景；3. 核心需求；"
+        "4. 主要痛点；5. 关键约束；6. 推荐解决方向；"
+        "7. 后续需要确认的问题。"
+    )
+    user_prompt = f"""客户需求：
+{requirement}
+
+请对以上客户需求进行结构化解析，回答要简洁、专业，适合售前沟通。"""
+
+    try:
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.deepseek.com",
+            timeout=20.0,
+        )
+        response = client.chat.completions.create(
+            model="deepseek-v4-flash",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+        )
+        analysis = response.choices[0].message.content
+    except Exception as exc:
+        return (
+            "调用 DeepSeek API 失败，请检查网络、模型名称、API Key 或账户余额。"
+            f"错误详情：{exc}"
+        )
+
+    if not analysis:
+        return "DeepSeek API 未返回有效需求解析，请稍后重试。"
+
+    return analysis.strip()
+
+
 def generate_solution(requirement: str, retrieved_chunks: list[dict]) -> str:
     """Generate a presales solution proposal with DeepSeek."""
     requirement = requirement.strip()
