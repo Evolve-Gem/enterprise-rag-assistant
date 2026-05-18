@@ -148,7 +148,17 @@ mode = st.radio(
 
 if mode == "知识库问答":
     st.subheader("知识库问答")
-    question = st.text_area("请输入你的问题", placeholder="例如：产品适合哪些企业场景？")
+    if "question_input" not in st.session_state:
+        st.session_state.question_input = ""
+
+    if st.button("填入示例问题"):
+        st.session_state.question_input = "教育行业适合哪些场景？"
+
+    question = st.text_area(
+        "请输入你的问题",
+        placeholder="例如：产品适合哪些企业场景？",
+        key="question_input",
+    )
     if st.button("提交问题"):
         if question.strip():
             retrieval_chunks = split_documents(documents)
@@ -183,9 +193,19 @@ if mode == "知识库问答":
             st.warning("请先输入问题。")
 else:
     st.subheader("方案生成")
+    if "requirement_input" not in st.session_state:
+        st.session_state.requirement_input = ""
+
+    if st.button("填入示例客户需求"):
+        st.session_state.requirement_input = (
+            "某职业院校希望建设统一知识库，用于招生咨询、教务政策问答和学生事务答疑，"
+            "希望上线快、成本低、方便维护。"
+        )
+
     requirement = st.text_area(
         "请输入客户需求",
         placeholder="例如：某教育集团希望建设统一知识库并提升招生咨询效率。",
+        key="requirement_input",
     )
     if st.button("生成方案"):
         if requirement.strip():
