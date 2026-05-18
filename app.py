@@ -1,6 +1,6 @@
 import streamlit as st
 
-from rag.chains import generate_answer
+from rag.chains import generate_answer, generate_solution
 from rag.loader import load_markdown_documents
 from rag.retriever import keyword_retrieve
 from rag.splitter import split_documents
@@ -92,7 +92,30 @@ else:
     )
     if st.button("生成方案"):
         if requirement.strip():
-            st.info("方案生成链路将在后续阶段接入。")
+            solution_chunks = split_documents(documents)
+            results = keyword_retrieve(requirement, solution_chunks, top_k=3)
+
             st.write(f"当前需求：{requirement}")
+
+            if results:
+                st.markdown("### 匹配到的方案参考资料")
+                for result in results:
+                    with st.expander(
+                        f"{result['chunk_id']} · score {result['score']}"
+                    ):
+                        st.markdown(f"**chunk_id：** `{result['chunk_id']}`")
+                        st.markdown(f"**来源文档：** {result['source_title']}")
+                        st.markdown(f"**匹配分数：** {result['score']}")
+                        preview = result["content"][:300]
+                        if len(result["content"]) > 300:
+                            preview += "..."
+                        st.text(preview)
+
+                st.markdown("### AI 生成售前方案")
+                with st.spinner("正在基于客户需求和参考资料生成方案..."):
+                    solution = generate_solution(requirement, results)
+                st.markdown(solution)
+            else:
+                st.warning("暂未从知识库中检索到相关方案资料。")
         else:
             st.warning("请先输入客户需求。")

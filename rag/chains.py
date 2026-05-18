@@ -96,7 +96,70 @@ def answer_question(question: str) -> str:
     return "知识库问答功能将在后续阶段接入。"
 
 
-def generate_solution(requirement: str) -> str:
-    """Generate a presales solution proposal from customer requirements."""
-    # TODO: Compose requirement analysis, retrieval, and proposal generation.
-    return "方案生成功能将在后续阶段接入。"
+def generate_solution(requirement: str, retrieved_chunks: list[dict]) -> str:
+    """Generate a presales solution proposal with DeepSeek."""
+    requirement = requirement.strip()
+    if not requirement:
+        return "请输入客户需求。"
+
+    if not retrieved_chunks:
+        return "暂未从知识库中检索到相关资料，无法生成可靠方案。"
+
+    try:
+        from dotenv import load_dotenv
+        from openai import OpenAI
+    except ImportError as exc:
+        return f"缺少必要依赖：{exc.name}，请确认 requirements.txt 中的依赖已安装。"
+
+    load_dotenv()
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        return (
+            "未检测到 DEEPSEEK_API_KEY。请在项目根目录创建 .env 文件，"
+            "并写入 DEEPSEEK_API_KEY=你的 API Key 后重试。"
+        )
+
+    context = _format_retrieved_context(retrieved_chunks)
+    system_prompt = (
+        "你是技术销售 / 解决方案工程师，擅长基于企业知识库资料"
+        "为客户生成务实、结构化的售前方案初稿。"
+        "你必须基于给定客户需求和检索资料片段生成方案，"
+        "不允许编造知识库中不存在的具体产品能力。"
+        "如果资料不足，请明确说明“根据当前知识库资料无法确定”。"
+        "输出必须包含：一、客户背景理解；二、核心需求与痛点；"
+        "三、推荐解决方案；四、功能模块设计；五、实施步骤建议；"
+        "六、预期价值；七、参考资料来源。"
+    )
+    user_prompt = f"""客户需求：
+{requirement}
+
+检索资料片段：
+{context}
+
+请基于以上资料生成结构化售前方案初稿。"""
+
+    try:
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.deepseek.com",
+            timeout=20.0,
+        )
+        response = client.chat.completions.create(
+            model="deepseek-v4-flash",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+        )
+        solution = response.choices[0].message.content
+    except Exception as exc:
+        return (
+            "调用 DeepSeek API 失败，请检查网络、模型名称、API Key 或账户余额。"
+            f"错误详情：{exc}"
+        )
+
+    if not solution:
+        return "DeepSeek API 未返回有效方案，请稍后重试。"
+
+    return solution.strip()
