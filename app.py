@@ -6,6 +6,91 @@ from rag.retriever import keyword_retrieve
 from rag.splitter import split_documents
 
 
+def build_answer_markdown(question, results, answer) -> str:
+    """Build a Markdown export for a knowledge-base QA result."""
+    question_text = str(question or "").strip() or "未提供问题"
+    answer_text = str(answer or "").strip() or "暂无 AI 生成回答。"
+
+    lines = [
+        "# 知识库问答结果",
+        "",
+        "## 用户问题",
+        "",
+        question_text,
+        "",
+        "## 检索到的资料片段",
+        "",
+    ]
+
+    if results:
+        for index, result in enumerate(results, start=1):
+            lines.extend(
+                [
+                    f"{index}. chunk_id：`{result.get('chunk_id', '未知')}`",
+                    f"   - source_title：{result.get('source_title', '未知来源')}",
+                    f"   - score：{result.get('score', 0)}",
+                ]
+            )
+    else:
+        lines.append("暂无检索结果。")
+
+    lines.extend(
+        [
+            "",
+            "## AI 生成回答",
+            "",
+            answer_text,
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def build_solution_markdown(requirement, analysis, results, solution) -> str:
+    """Build a Markdown export for a presales solution result."""
+    requirement_text = str(requirement or "").strip() or "未提供客户需求"
+    analysis_text = str(analysis or "").strip() or "暂无 AI 客户需求解析。"
+    solution_text = str(solution or "").strip() or "暂无 AI 生成售前方案。"
+
+    lines = [
+        "# 售前方案生成结果",
+        "",
+        "## 客户原始需求",
+        "",
+        requirement_text,
+        "",
+        "## AI 客户需求解析",
+        "",
+        analysis_text,
+        "",
+        "## 匹配到的方案参考资料",
+        "",
+    ]
+
+    if results:
+        for index, result in enumerate(results, start=1):
+            lines.extend(
+                [
+                    f"{index}. chunk_id：`{result.get('chunk_id', '未知')}`",
+                    f"   - source_title：{result.get('source_title', '未知来源')}",
+                    f"   - score：{result.get('score', 0)}",
+                ]
+            )
+    else:
+        lines.append("暂无匹配资料。")
+
+    lines.extend(
+        [
+            "",
+            "## AI 生成售前方案",
+            "",
+            solution_text,
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 st.set_page_config(page_title="企业知识库 RAG 智能助手", page_icon="📚")
 
 st.title("企业知识库 RAG 智能助手")
@@ -80,6 +165,12 @@ if mode == "知识库问答":
                 with st.spinner("正在基于检索片段生成回答..."):
                     answer = generate_answer(question, results)
                 st.markdown(answer)
+                st.download_button(
+                    "下载问答结果 Markdown",
+                    data=build_answer_markdown(question, results, answer),
+                    file_name="rag_answer.md",
+                    mime="text/markdown",
+                )
             else:
                 st.warning("暂未从知识库中检索到相关资料。")
         else:
@@ -120,6 +211,17 @@ else:
                 with st.spinner("正在基于客户需求和参考资料生成方案..."):
                     solution = generate_solution(requirement, results)
                 st.markdown(solution)
+                st.download_button(
+                    "下载售前方案 Markdown",
+                    data=build_solution_markdown(
+                        requirement,
+                        requirement_analysis,
+                        results,
+                        solution,
+                    ),
+                    file_name="presales_solution.md",
+                    mime="text/markdown",
+                )
             else:
                 st.warning("暂未从知识库中检索到相关方案资料。")
         else:
