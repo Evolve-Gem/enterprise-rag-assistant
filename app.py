@@ -15,10 +15,21 @@ def build_preview(content, limit: int = 300) -> str:
     return preview
 
 
+def get_unique_sources(results: list[dict]) -> list[str]:
+    """Return source titles from retrieval results without duplicates."""
+    sources: list[str] = []
+    for result in results:
+        source_title = str(result.get("source_title") or "").strip()
+        if source_title and source_title not in sources:
+            sources.append(source_title)
+    return sources
+
+
 def build_answer_markdown(question, results, answer) -> str:
     """Build a Markdown export for a knowledge-base QA result."""
     question_text = str(question or "").strip() or "未提供问题"
     answer_text = str(answer or "").strip() or "暂无 AI 生成回答。"
+    sources = get_unique_sources(results or [])
 
     lines = [
         "# 知识库问答结果",
@@ -50,8 +61,15 @@ def build_answer_markdown(question, results, answer) -> str:
             "",
             answer_text,
             "",
+            "## 参考资料来源",
+            "",
         ]
     )
+    if sources:
+        lines.extend([f"- {source}" for source in sources])
+    else:
+        lines.append("暂无参考资料来源。")
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -60,6 +78,7 @@ def build_solution_markdown(requirement, analysis, results, solution) -> str:
     requirement_text = str(requirement or "").strip() or "未提供客户需求"
     analysis_text = str(analysis or "").strip() or "暂无 AI 客户需求解析。"
     solution_text = str(solution or "").strip() or "暂无 AI 生成售前方案。"
+    sources = get_unique_sources(results or [])
 
     lines = [
         "# 售前方案生成结果",
@@ -95,8 +114,15 @@ def build_solution_markdown(requirement, analysis, results, solution) -> str:
             "",
             solution_text,
             "",
+            "## 参考资料来源",
+            "",
         ]
     )
+    if sources:
+        lines.extend([f"- {source}" for source in sources])
+    else:
+        lines.append("暂无参考资料来源。")
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -172,15 +198,20 @@ if mode == "知识库问答":
                     with st.expander(
                         f"资料片段：{result['chunk_id']}｜评分：{result['score']}"
                     ):
-                        st.markdown(f"**chunk_id：** `{result['chunk_id']}`")
                         st.markdown(f"**来源文档：** {result['source_title']}")
                         st.markdown(f"**匹配分数：** {result['score']}")
+                        st.markdown("**内容预览：**")
                         st.text(build_preview(result.get("content"), limit=300))
 
                 st.markdown("### AI 生成回答")
                 with st.spinner("正在基于检索片段生成回答..."):
                     answer = generate_answer(question, results)
                 st.markdown(answer)
+                sources = get_unique_sources(results)
+                if sources:
+                    st.markdown("### 参考资料来源")
+                    for source in sources:
+                        st.markdown(f"- {source}")
                 st.download_button(
                     "下载问答结果 Markdown",
                     data=build_answer_markdown(question, results, answer),
@@ -225,15 +256,20 @@ else:
                     with st.expander(
                         f"资料片段：{result['chunk_id']}｜评分：{result['score']}"
                     ):
-                        st.markdown(f"**chunk_id：** `{result['chunk_id']}`")
                         st.markdown(f"**来源文档：** {result['source_title']}")
                         st.markdown(f"**匹配分数：** {result['score']}")
+                        st.markdown("**内容预览：**")
                         st.text(build_preview(result.get("content"), limit=300))
 
                 st.markdown("### AI 生成售前方案")
                 with st.spinner("正在基于客户需求和参考资料生成方案..."):
                     solution = generate_solution(requirement, results)
                 st.markdown(solution)
+                sources = get_unique_sources(results)
+                if sources:
+                    st.markdown("### 参考资料来源")
+                    for source in sources:
+                        st.markdown(f"- {source}")
                 st.download_button(
                     "下载售前方案 Markdown",
                     data=build_solution_markdown(
