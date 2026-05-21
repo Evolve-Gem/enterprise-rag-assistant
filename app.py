@@ -193,25 +193,31 @@ if mode == "知识库问答":
             st.write(f"当前问题：{question}")
 
             if results:
-                st.markdown("### 检索到的相关资料片段")
-                for result in results:
-                    with st.expander(
-                        f"资料片段：{result['chunk_id']}｜评分：{result['score']}"
-                    ):
+                with st.spinner("正在基于检索片段生成回答..."):
+                    answer = generate_answer(question, results)
+
+                st.success("已完成知识库检索与回答生成。")
+
+                with st.expander("✅ 1. 检索到的相关资料片段", expanded=False):
+                    for index, result in enumerate(results, start=1):
+                        st.markdown(
+                            f"**资料片段：{result['chunk_id']}｜评分：{result['score']}**"
+                        )
                         st.markdown(f"**来源文档：** {result['source_title']}")
                         st.markdown(f"**匹配分数：** {result['score']}")
                         st.markdown("**内容预览：**")
                         st.text(build_preview(result.get("content"), limit=300))
+                        if index < len(results):
+                            st.divider()
 
-                st.markdown("### AI 生成回答")
-                with st.spinner("正在基于检索片段生成回答..."):
-                    answer = generate_answer(question, results)
-                st.markdown(answer)
-                sources = get_unique_sources(results)
-                if sources:
-                    st.markdown("### 参考资料来源")
-                    for source in sources:
-                        st.markdown(f"- {source}")
+                with st.expander("✅ 2. AI 生成回答", expanded=True):
+                    st.markdown(answer)
+                    sources = get_unique_sources(results)
+                    if sources:
+                        st.markdown("### 参考资料来源")
+                        for source in sources:
+                            st.markdown(f"- {source}")
+
                 st.download_button(
                     "下载问答结果 Markdown",
                     data=build_answer_markdown(question, results, answer),
@@ -242,34 +248,41 @@ else:
         if requirement.strip():
             st.write(f"当前需求：{requirement}")
 
-            st.markdown("### AI 客户需求解析")
             with st.spinner("正在解析客户需求..."):
                 requirement_analysis = analyze_requirement(requirement)
-            st.markdown(requirement_analysis)
 
             solution_chunks = split_documents(documents)
             results = keyword_retrieve(requirement, solution_chunks, top_k=3)
 
             if results:
-                st.markdown("### 匹配到的方案参考资料")
-                for result in results:
-                    with st.expander(
-                        f"资料片段：{result['chunk_id']}｜评分：{result['score']}"
-                    ):
+                with st.spinner("正在基于客户需求和参考资料生成方案..."):
+                    solution = generate_solution(requirement, results)
+
+                st.success("已完成客户需求解析、资料检索与售前方案生成。")
+
+                with st.expander("✅ 1. AI 客户需求解析", expanded=True):
+                    st.markdown(requirement_analysis)
+
+                with st.expander("✅ 2. 匹配到的方案参考资料", expanded=False):
+                    for index, result in enumerate(results, start=1):
+                        st.markdown(
+                            f"**资料片段：{result['chunk_id']}｜评分：{result['score']}**"
+                        )
                         st.markdown(f"**来源文档：** {result['source_title']}")
                         st.markdown(f"**匹配分数：** {result['score']}")
                         st.markdown("**内容预览：**")
                         st.text(build_preview(result.get("content"), limit=300))
+                        if index < len(results):
+                            st.divider()
 
-                st.markdown("### AI 生成售前方案")
-                with st.spinner("正在基于客户需求和参考资料生成方案..."):
-                    solution = generate_solution(requirement, results)
-                st.markdown(solution)
-                sources = get_unique_sources(results)
-                if sources:
-                    st.markdown("### 参考资料来源")
-                    for source in sources:
-                        st.markdown(f"- {source}")
+                with st.expander("✅ 3. AI 生成售前方案", expanded=True):
+                    st.markdown(solution)
+                    sources = get_unique_sources(results)
+                    if sources:
+                        st.markdown("### 参考资料来源")
+                        for source in sources:
+                            st.markdown(f"- {source}")
+
                 st.download_button(
                     "下载售前方案 Markdown",
                     data=build_solution_markdown(
