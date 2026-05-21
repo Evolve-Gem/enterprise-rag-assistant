@@ -15,6 +15,44 @@
 - 支持根据客户需求生成结构化售前方案。
 - 适合技术销售 / 解决方案工程师场景。
 
+## Demo 展示
+
+### 1. 项目首页与工作台总览
+
+展示系统首页、知识库状态侧边栏和问答/方案生成入口。
+
+![项目首页与工作台总览](docs/images/01-home-overview.png)
+
+### 2. 知识库状态与文档预览
+
+展示知识库文档数量、chunk 数量，以及文档展开后的路径、字符数和内容预览。
+
+![知识库状态与文档预览](docs/images/02-sidebar-knowledge-base.png)
+
+### 3. 知识库问答结果
+
+系统基于检索到的知识库资料片段生成回答，并展示参考资料来源。
+
+![知识库问答结果](docs/images/03-rag-answer-result.png)
+
+### 4. 检索资料片段详情
+
+展示 RAG 检索结果中的来源文档、匹配分数和内容预览，增强回答可追溯性。
+
+![检索资料片段详情](docs/images/04-retrieved-source-detail.png)
+
+### 5. 售前方案生成工作流
+
+系统先解析客户需求，再检索方案参考资料，最后生成结构化售前方案。
+
+![售前方案生成工作流](docs/images/05-solution-workflow.png)
+
+### 6. Markdown 结果导出
+
+支持将问答结果和售前方案导出为 Markdown，方便后续整理成正式文档。
+
+![Markdown 结果导出](docs/images/06-markdown-export.png)
+
 ## 核心功能
 
 ### 知识库问答模式
