@@ -69,8 +69,21 @@ services:
       context: .
       dockerfile: docker/Dockerfile.web
       args:
-        # Baked into the client bundle at build time.
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+        # Baked into the client bundle at build time, so this MUST stay empty in
+        # production: an empty base means "same origin", and the browser then
+        # calls /api and /health on whatever host served the page, which Next
+        # proxies to API_PROXY_TARGET.
+        #
+        # The `-` (not `:-`) is deliberate. `${VAR:-default}` substitutes the
+        # default when the value is empty OR unset, so a production .env that
+        # sets `NEXT_PUBLIC_API_BASE_URL=` (empty, as the template does) would
+        # silently become http://localhost:8000 and bake localhost into the
+        # bundle. `${VAR-default}` only substitutes when the variable is unset,
+        # which is exactly the semantics we want:
+        #   unset        -> ""
+        #   set to ""    -> ""
+        #   set to a URL -> that URL
+        NEXT_PUBLIC_API_BASE_URL: "${NEXT_PUBLIC_API_BASE_URL-}"
     image: rag-copilot-web:3.0.0
     environment:
       PORT: "3001"
