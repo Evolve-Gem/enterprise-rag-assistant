@@ -28,6 +28,30 @@ Memory / RAG / Tool Calling / Workflow 环节）。求职方向：AI Solution En
   `test_both_engines_agree_on_core_outcome` 是防漂移守门员。
 - 引用契约：编号上下文 = 引用命名空间；越界编号必须从正文**删除**（假引用比没引用更糟）。
 
+## 生产服务器事实（2026-09-17 只读勘查）
+
+**腾讯云轻量 `81.70.51.32`**（`VM-0-16-ubuntu`，Ubuntu 22.04.5，x86_64，2 vCPU / **1.9 GB 内存 / 无 swap**，磁盘 50G 用 17G）
+Docker 29.1.3 + Compose 2.40.3；Nginx 1.18；UFW inactive（边界是**腾讯云安全组**）；SSH 免密（`~/.ssh/config` 已配）。
+
+| 端口 | 占用者 | 备注 |
+| --- | --- | --- |
+| 80 / 443 | Nginx | 多站点 |
+| **8000** | gunicorn（绑 127.0.0.1） | `eat.changziqi.com` —— **不可复用** |
+| **8502** | 容器 `enterprise-rag-demo` | 本项目 **legacy V2**，已跑数周 |
+| 3001 / 18000 | 空闲 | V3 用这两个 |
+
+现存 Nginx 站点：`changziqi.com` / `eat.changziqi.com` / `love-archive-preview`（含 `server_name 81.70.51.32`）/
+**`rag.changziqi.com`（→ 127.0.0.1:8502，即 legacy V2，Certbot 证书有效）** / `default`。
+
+**部署 V3 的既定路线**：
+- 阶段 A：公网 IP + **单端口 3001**（前端同源反代 `/api`、`/health` 到 backend；backend 绑 `127.0.0.1:18000`）
+- 阶段 B：把 `rag.changziqi.com` 的 `proxy_pass` 从 `8502` **改一行**为 `3001`（复用现有证书，无需新 server block）
+- 服务器构建前**必须加 2GB swap**（1.9GB 无 swap 构建 Next.js 极易 OOM）
+- 部署目录建议 `/opt/enterprise-rag-copilot/{repo,.env}`（legacy 在 `~/apps/`，用户可能偏好后者）
+
+**本机能力边界**：**无 Docker**（无 Desktop / 无 WSL 发行版 / 无 podman）→ 不能本地构建或运行镜像；
+**无 GitHub 凭据**（非交互 shell 无法提示输入）→ **不能 push**，push 必须用户本人执行。
+
 ## 本机环境坑位
 
 - **⚠️ 程序化用 git 做文件差集 = 危险**：`git ls-files` / `git status --porcelain` 对**非 ASCII 路径
