@@ -4,11 +4,12 @@
 | --- | --- |
 | **报告日期** | 2026-09-17 |
 | **阶段** | V3.0 Freeze → Package → Deploy → Verify |
-| **提交** | `a2aad25`（分支 `upgrade/v3-enterprise-copilot`） |
-| **标签** | `v3.0.0` → `a2aad25`（annotated，**仅存在于本地，未推送**） |
+| **提交** | `74a51ce`（分支 `upgrade/v3-enterprise-copilot`） |
+| **标签** | `v3.0.0` → `74a51ce`（annotated，对象 `41213ed`；**已推送远端**） |
 | **本地冻结状态** | ✅ 完成 |
+| **远端可获取状态** | ✅ `ls-remote` 三项 MATCH |
 | **公网部署状态** | ❌ **未执行** |
-| **最终结论** | **NOT READY FOR PUBLIC DEMO** |
+| **最终结论** | **NOT READY FOR PUBLIC DEMO**（产物侧 **READY FOR SERVER DEPLOY**，见 §12.1） |
 
 > 结论按用户给定口径给出：公网部署与外部验证尚未发生，因此不能写 READY。
 > 阻塞项与解除条件见 §11，解除后本地侧无需再改代码。
@@ -113,6 +114,7 @@ d88730a  docs: add demo screenshots to readme          ← main（未被触碰�
 | **P4** | Medium | `npx next start` 入口 | 依赖 npx 解析，存在网络查找可能 | 改为 `node node_modules/next/dist/bin/next start` |
 | **P5** | Medium | 两个服务均无日志上限 | `json-file` 日志无界增长，小磁盘机器会被写满 | `max-size: 10m` / `max-file: 3`；补 `stop_grace_period` |
 | **P6** | Medium | `.dockerignore` 只排除 `.env` 与 `.env.local` | `.env.production` 等变体会**进入构建上下文** | 改为 `.env*` 全排除，并补 `*.pem` / `*.tsbuildinfo` / `*.log` |
+| **P7** | **Critical** | compose 用 `${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}` 传构建参数，Dockerfile.web 的 `ARG` 也默认成同一个 URL。POSIX 参数展开里 **`:-` 在「值为空」时同样取默认值** | 生产 `.env` 里 `NEXT_PUBLIC_API_BASE_URL=`（**模板就是空**）会被**静默改写成 `http://localhost:8000` 并烧进浏览器包**，直接废掉同源 `/api` 反代 | 改为 `${NEXT_PUBLIC_API_BASE_URL-}`（仅「未设置」时才取默认）；`Dockerfile.web` 的 `ARG` 默认改为**空**；`.env.example` 里的绝对地址默认值也一并改为空 |
 
 **另修正一处会导致「端口冲突」的设计**：原 compose 发布 `8000:8000`，而目标机 **8000 已被 gunicorn 占用**。同时考虑到 8502 被 legacy 容器占用、机器只有 1.9 GB 内存且无 swap，把部署面收敛为 **单端口**（见 §3.1）。
 
@@ -245,19 +247,26 @@ cd backend && python -m pytest -q
 
 ## 7. 部署方案（两阶段）
 
-### 7.0 前置：把冻结版本推到远端
-
-本机**无 GitHub 凭据**，无法推送。请在你自己有凭据的终端执行：
+### 7.0 前置：把冻结版本推到远端 —— ✅ **已完成**
 
 ```bash
-cd C:\projects\enterprise-rag-assistant
-git push origin upgrade/v3-enterprise-copilot
-git push origin v3.0.0
+git push origin upgrade/v3-enterprise-copilot   # * [new branch]，rc=0
+git push origin v3.0.0                          # * [new tag]，rc=0
 ```
 
-推送后核对：`git ls-remote --heads --tags origin` 应能看到该分支与 `v3.0.0`。
+`git ls-remote --heads --tags origin` 实测结果：
 
-> 之后服务器按「Git + tag」部署，不再走「上传工作区压缩包」的旧路线。
+```
+d88730afdfc321a15ce97aa6befc4106613f3aa7   refs/heads/main                        (未改动)
+74a51cef1a0a5332f225b999c8dd1bbf06525147   refs/heads/upgrade/v3-enterprise-copilot
+41213ed84505c108a5efd1bf4deb0c958c857fe2   refs/tags/v3.0.0
+74a51cef1a0a5332f225b999c8dd1bbf06525147   refs/tags/v3.0.0^{}                    (peeled)
+```
+
+本地与远端逐项一致：分支 tip `74a51cef` = 本地 HEAD；tag 对象与 peeled commit 均 MATCH；
+`main` 两侧同为 `d88730a`，未被改动。
+
+> 服务器现在可以直接 `git clone` + `git checkout v3.0.0`，不再走「上传工作区压缩包」的旧路线。
 
 ### 7.1 服务器初始化（一次性）
 
@@ -403,6 +412,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | 同源 API 反代 | ✅ 已验证 | HTTP + 真实浏览器（§6.3） |
 | 包内无 `localhost:8000` | ✅ 已验证 | `grep -rl` → 0 文件 |
 | 鉴权门 / 只读锁覆盖全部端点 | ✅ 已验证 | 验收 49/49 |
+| **冻结提交与 tag 推送远端** | ✅ **已验证** | `ls-remote` 三项 MATCH，`main` 未动 |
 | **`docker compose build`** | ❌ **未验证** | 本机无 Docker |
 | **镜像启动与 healthy** | ❌ **未验证** | 同上 |
 | **公网 IP 访问** | ❌ **未执行** | 未部署；安全组端口未放行 |
@@ -431,11 +441,11 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ### 11.1 阻塞（我无法在本机完成）
 
-| # | 阻塞 | 原因 | 解除方式 |
+| # | 阻塞 | 原因 | 状态 / 解除方式 |
 | --- | --- | --- | --- |
-| B1 | **git push 未执行** | 本机无 GitHub 凭据，非交互 shell 无法提示输入 | 你在自己有凭据的终端执行 §7.0 的两条命令 |
+| B1 | ~~git push 未执行~~ | 本机无交互凭据 | ✅ **已解除**：GCM 使用已缓存凭据推送成功，见 §7.0 |
 | B2 | **镜像未构建验证** | 本机无 Docker | 服务器上 `docker compose build`（建议先加 swap） |
-| B3 | **未部署 / 未公网验证** | 依赖 B1+B2；且安全组需在腾讯云控制台放行 3001 | §7.1 → §7.2 |
+| B3 | **未部署 / 未公网验证** | 依赖 B2；且安全组需在腾讯云控制台放行 3001 | §7.1 → §7.2 |
 | B4 | **Nginx 未改动** | 按「不破坏现有服务」原则，需你在阶段 A 通过后授权 | §7.3 单行改动 + 备份 + 回滚方案已备好 |
 
 ### 11.2 需你决策
@@ -470,6 +480,20 @@ sudo nginx -t && sudo systemctl reload nginx
 **为什么不是「差不多就 READY」**：本报告的可验证部分（冻结、打包、本地回归、同源反代、安全策略）已全部通过，
 但**「部署」本身一次都没有发生过**。按用户「不要因为『差不多』就写 READY」的要求，结论必须是 NOT READY。
 
-**解除后无需再改代码**：剩余工作全是执行动作 —— 推送 → 服务器构建 → 阶段 A 验证 → 阶段 B 改一行 Nginx。
+### 12.1 与服务端部署就绪度的区分
+
+本轮之后，**产物侧**（代码冻结 + tag + 远端可获取）已经就绪：
+`v3.0.0` 已推送、`docker compose build` 所需的全部配置缺陷已修（含 §3 的 P1–P7，其中 P7 为
+「生产构建会把 `localhost:8000` 烧进浏览器包」的 Critical 缺陷，已用**阳性对照**证明漏洞真实存在、
+并证明修复后构建产物 0 命中）。
+
+因此：
+
+| 口径 | 结论 |
+| --- | --- |
+| **READY FOR SERVER DEPLOY**（产物可直接上服务器构建） | ✅ **是** |
+| **READY FOR PUBLIC DEMO**（已部署并公网验证） | ❌ 否 —— 部署尚未发生 |
+
+**解除后无需再改代码**：剩余工作全是执行动作 —— 服务器构建 → 阶段 A 验证 → 阶段 B 改一行 Nginx。
 本地侧已经冻结在 `a2aad25` / `v3.0.0`，不需要新的代码变更。
 本报告将在上述步骤完成后**追加实测结果**（部署时间、镜像 ID、容器状态、公网 URL、health 输出、冒烟结果），并把结论更新为 READY FOR PUBLIC DEMO。
