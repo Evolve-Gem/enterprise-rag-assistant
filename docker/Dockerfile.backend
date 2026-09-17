@@ -17,14 +17,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Build deps for wheels that have no prebuilt binary for linux/arm64.
+# Compiler toolchain only for the wheels that have no linux/arm64 binary.
+# It is installed and purged in separate steps from `curl`: `--auto-remove`
+# drops packages that were pulled in automatically, and the HEALTHCHECK below
+# depends on curl, so curl is (re)installed explicitly *after* the purge.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential curl \
+    && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt \
-    && apt-get purge -y --auto-remove build-essential
+    && apt-get purge -y --auto-remove build-essential \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Non-root runtime user.
 RUN useradd --create-home --shell /usr/sbin/nologin appuser

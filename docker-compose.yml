@@ -1,10 +1,18 @@
-# Enterprise RAG Copilot — 一键启动（web + backend，可选 pgvector）
+# Enterprise RAG Copilot — 一键启动（web + backend，可选 pgvector / legacy）
 #
-#   docker compose up --build            # 默认：web + backend（本地向量索引）
-#   docker compose --profile pg up       # 额外启动 PostgreSQL + pgvector
-#   docker compose --profile legacy up   # 额外启动 legacy Streamlit 演示
+# 本地开发：
+#   docker compose up --build                      # web:3001 + backend:8000
+#   docker compose --profile pg up                 # 额外启动 PostgreSQL + pgvector
+#   docker compose --profile legacy up             # 额外启动 legacy Streamlit 演示
 #
-# 环境变量从仓库根目录的 .env 读取（不存在时请先 `cp .env.example .env`）。
+# 生产 Demo（默认只起 backend + web，不启用 pgvector / legacy）：
+#   1. 在仓库根目录创建服务器专用 .env（不要提交 Git）
+#      —— 模板见 .env.production.example，必须设置 DEMO_PASSWORD 与 DEMO_READ_ONLY=true
+#   2. docker compose up -d --build
+#   3. docker compose ps && docker compose logs -f
+#
+# 环境变量来源：compose 变量替换读取本目录的 .env；容器运行时变量由
+# `env_file: .env` 注入。真实密钥只存在于服务器上的 .env。
 
 name: enterprise-rag-copilot
 
@@ -20,8 +28,18 @@ services:
       # Inside the compose network the frontend talks to `backend:8000`, and the
       # browser talks to the published port.
       ENVIRONMENT: production
+      # These three MUST be pinned here. `env_file: .env` also injects the values
+      # from the host file, and service-level `environment` wins over `env_file`.
+      # Without this, a `.env` that carries an empty `KB_DIR=` (the example file
+      # ships them empty) would blank out the image ENV, the app would fall back
+      # to the in-image default `/app/backend/knowledge_base`, and the service
+      # would come up healthy with ZERO documents indexed.
+      KB_DIR: /app/knowledge_base
+      PROMPTS_DIR: /app/prompts
       DATA_DIR: /app/backend/data
-      CORS_ORIGINS: http://localhost:3001,http://127.0.0.1:3001
+      # Same-origin in production (Nginx routes /api to this service), so CORS is
+      # only relevant when the API is called from a different origin directly.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
       # Optional: point the vector store at the pg service (profile "pg").
       VECTOR_STORE: ${VECTOR_STORE:-numpy}
       DATABASE_URL: ${DATABASE_URL:-}
@@ -32,6 +50,14 @@ services:
       # uploading documents without rebuilding the image.
       - backend-data:/app/backend/data
       - ./knowledge_base:/app/knowledge_base
+    # A demo box has a small disk; without a cap the json-file driver grows
+    # until the volume fills and every service starts failing.
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 20s
     restart: unless-stopped
 
   web:
@@ -49,6 +75,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    logging: *logging
+    stop_grace_period: 10s
     restart: unless-stopped
 
   # ---------------------------------------------------------------- optional

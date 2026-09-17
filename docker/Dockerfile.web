@@ -28,13 +28,20 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3001
 
-RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+# Create the group first and put the user in it, so `--chown=nextjs:nodejs`
+# below resolves and the non-root process can write `.next/cache` at runtime.
+# Without the chown, root-owned build output makes image optimisation / ISR
+# fail with EACCES even though the container starts fine.
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nextjs -u 1001 -G nodejs
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/next.config.ts ./next.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/next.config.ts ./next.config.ts
+
+RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next
 
 USER nextjs
 EXPOSE 3001
@@ -42,4 +49,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD wget -qO- http://127.0.0.1:3001/ >/dev/null 2>&1 || exit 1
 
-CMD ["npx", "next", "start", "--port", "3001"]
+# Deterministic entrypoint: no npx resolution, no chance of a network lookup.
+CMD ["node", "node_modules/next/dist/bin/next", "start", "--port", "3001", "--hostname", "0.0.0.0"]

@@ -1,20 +1,48 @@
+# Build context exclusions.
+#
+# The build context is the repository root (the backend image needs
+# `knowledge_base/` and `prompts/`), so everything that must never reach an
+# image is excluded here.
+
+# --- version control ---------------------------------------------------------
 .git
 .gitignore
+
+# --- secrets: never bake an env file into an image ---------------------------
+# `env_file` in docker-compose feeds the container at RUNTIME, from the host.
+# Nothing env-shaped belongs in the build context.
+.env
+.env.*
+*.pem
+
+# --- python ------------------------------------------------------------------
 .venv
+venv
 **/__pycache__
-**/*.pyc
+**/*.py[cod]
 **/.pytest_cache
 **/.mypy_cache
 **/.ruff_cache
+backend/data
+**/*.sqlite3
+
+# --- node --------------------------------------------------------------------
 node_modules
 **/node_modules
 **/.next
+**/.turbo
 **/out
-backend/data
-tmp
+**/*.tsbuildinfo
+
+# --- docs / artefacts --------------------------------------------------------
+# NOTE: `legacy/` is intentionally NOT excluded — the compose `legacy` profile
+# builds `legacy/Dockerfile` with this same context. It is never started by
+# default (profile-gated), but it must stay buildable.
 docs/images
+tmp
 deploy_package
-**/*.sqlite3
-.env
-.env.local
+*.log
+
+# --- os ----------------------------------------------------------------------
 .DS_Store
+Thumbs.db
