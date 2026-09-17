@@ -328,6 +328,13 @@ docker compose --profile pg up     # 额外启动 PostgreSQL + pgvector
 docker compose --profile legacy up # 额外启动 V2 Streamlit 演示（:8502）
 ```
 
+生产 Demo 只启动 `backend` + `web`（pgvector 与 legacy 都是 profile 门控，默认不启）。
+前端把 `/api` 与 `/health` **同源反代**到后端，因此只有 web 一个端口需要对公网开放，
+FastAPI 端口绑定在 `127.0.0.1`，且构建产物中不会残留任何绝对 API 地址。
+
+完整步骤（含腾讯云安全组、Nginx 最小增量改动、回滚方案、验收清单）见
+[`docs/DEPLOYMENT_REPORT.md`](docs/DEPLOYMENT_REPORT.md)。
+
 ### 方式三：运行测试
 
 ```bash
@@ -356,9 +363,12 @@ npm run build                              # 生产构建
 | `RERANK_PROVIDER` | `heuristic` | `off` / `heuristic` / `llm` |
 | `AGENT_ENGINE` | `auto` | `auto` / `langgraph` / `native` |
 | `VECTOR_STORE` | `numpy` | `numpy` / `pgvector`（需 `DATABASE_URL`） |
-| `DEMO_PASSWORD` | 空 | 设置后启用访问密码 |
-| `DEMO_READ_ONLY` | `false` | `true` 关闭全部写操作 |
 | `PROMPT_VERSION` | `v1` | 对应 `prompts/<version>/` |
+| `DEMO_PASSWORD` | 空 | 设置后启用访问口令（生产 Demo 必须设置） |
+| `DEMO_READ_ONLY` | `false` | `true` 关闭全部写操作（生产 Demo 必须为 `true`） |
+| `API_PROXY_TARGET` | `http://127.0.0.1:8000` | web 反代后端的地址（**运行期**读取，改它不必重建镜像） |
+| `BACKEND_HOST_PORT` | `18000` | backend 宿主端口，仅绑 `127.0.0.1` |
+| `WEB_HOST_PORT` | `3001` | web 宿主端口，唯一对公网开放 |
 
 **安全约定**：后端响应中的密钥一律打码（`****1234`）；活动台账按字段名正则过滤凭据类键；前端从不存储密钥。
 
@@ -427,7 +437,8 @@ enterprise-rag-assistant/
 ├── legacy/                       # 冻结的 V2 Streamlit 演示
 ├── docker/                       # Dockerfile.backend · Dockerfile.web
 ├── docker-compose.yml
-└── docs/                         # ARCHITECTURE · INTERVIEW_GUIDE · DEMO_SCRIPT · V3_ACCEPTANCE_REPORT
+└── docs/                         # ARCHITECTURE · INTERVIEW_GUIDE · DEMO_SCRIPT
+                                  # V3_ACCEPTANCE_REPORT · DEPLOYMENT_REPORT
 ```
 
 ---
