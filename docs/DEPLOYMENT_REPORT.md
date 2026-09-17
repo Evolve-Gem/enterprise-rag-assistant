@@ -2,17 +2,18 @@
 
 | | |
 | --- | --- |
-| **报告日期** | 2026-09-17 |
-| **阶段** | V3.0 Freeze → Package → Deploy → Verify |
-| **提交** | `74a51ce`（分支 `upgrade/v3-enterprise-copilot`） |
-| **标签** | `v3.0.0` → `74a51ce`（annotated，对象 `41213ed`；**已推送远端**） |
+| **报告日期** | 2026-09-17（阶段 A 实测 2026-09-17） |
+| **阶段** | V3.0 Freeze → Package → Deploy → Verify → **Phase A Done** |
+| **冻结提交** | `74a51ce`（分支 `upgrade/v3-enterprise-copilot`，v3.0.0 冻结） |
+| **部署提交** | `ead406a`（分支 `upgrade/v3-enterprise-copilot`，v3.0.3 反代修复） |
+| **标签** | `v3.0.0`→`74a51ce`（annotated `41213ed`，已推送）· `v3.0.3`→`ead406a`（annotated `9c92a6b`，部署修复） |
 | **本地冻结状态** | ✅ 完成 |
 | **远端可获取状态** | ✅ `ls-remote` 三项 MATCH |
-| **公网部署状态** | ❌ **未执行** |
-| **最终结论** | **NOT READY FOR PUBLIC DEMO**（产物侧 **READY FOR SERVER DEPLOY**，见 §12.1） |
+| **公网部署状态** | ✅ **已执行（阶段 A）** |
+| **最终结论** | **PHASE A READY** ✅（域名/HTTPS 未切换，故非 READY FOR PUBLIC DEMO；见 §13.5） |
 
-> 结论按用户给定口径给出：公网部署与外部验证尚未发生，因此不能写 READY。
-> 阻塞项与解除条件见 §11，解除后本地侧无需再改代码。
+> 阶段 A 已实测完成：服务器部署 v3.0.3、backend+web healthy、同源反代修复生效、鉴权门/只读锁/真实数据/聊天冒烟/公网可达/重启恢复全部通过（见 §13）。
+> 仍待阶段 B（域名 `rag.changziqi.com` + HTTPS，Nginx 改一行 `proxy_pass` 至 3001）后才写 READY FOR PUBLIC DEMO。
 
 ---
 
@@ -413,12 +414,12 @@ sudo nginx -t && sudo systemctl reload nginx
 | 包内无 `localhost:8000` | ✅ 已验证 | `grep -rl` → 0 文件 |
 | 鉴权门 / 只读锁覆盖全部端点 | ✅ 已验证 | 验收 49/49 |
 | **冻结提交与 tag 推送远端** | ✅ **已验证** | `ls-remote` 三项 MATCH，`main` 未动 |
-| **`docker compose build`** | ❌ **未验证** | 本机无 Docker |
-| **镜像启动与 healthy** | ❌ **未验证** | 同上 |
-| **公网 IP 访问** | ❌ **未执行** | 未部署；安全组端口未放行 |
-| **域名 / HTTPS** | ❌ **未执行** | 未部署；Nginx 未改动 |
-| **外网 Golden Demo 冒烟** | ❌ **未执行** | 同上 |
-| **容器重启后恢复** | ❌ **未执行** | 同上 |
+| **`docker compose build`** | ✅ **已验证** | 服务器构建 web `fbc682e742dd`（1.26 GB）、backend `583da1057605`（471 MB） |
+| **镜像启动与 healthy** | ✅ **已验证** | backend/web 均 Up + healthy（§13.3） |
+| **公网 IP 访问** | ✅ **已验证** | `http://81.70.51.32:3001/health` → 200（安全组已放行 3001） |
+| **域名 / HTTPS** | ❌ **未执行** | 阶段 B：Nginx 改一行 `proxy_pass` 至 3001（未授权改动） |
+| **外网 Golden Demo 冒烟** | ✅ **已验证** | `POST /api/chat` → 200，546 字回答 + 3 引用（§13.4 #6） |
+| **容器重启后恢复** | ✅ **已验证** | `docker compose restart` 后 3 次轮询内 /health 恢复 200（§13.4 #8） |
 
 ---
 
@@ -444,8 +445,8 @@ sudo nginx -t && sudo systemctl reload nginx
 | # | 阻塞 | 原因 | 状态 / 解除方式 |
 | --- | --- | --- | --- |
 | B1 | ~~git push 未执行~~ | 本机无交互凭据 | ✅ **已解除**：GCM 使用已缓存凭据推送成功，见 §7.0 |
-| B2 | **镜像未构建验证** | 本机无 Docker | 服务器上 `docker compose build`（建议先加 swap） |
-| B3 | **未部署 / 未公网验证** | 依赖 B2；且安全组需在腾讯云控制台放行 3001 | §7.1 → §7.2 |
+| B2 | ~~镜像未构建验证~~ | 本机无 Docker | ✅ **已解除**：服务器上 `docker compose build web`（v3.0.3，腾讯云 npm 镜像，`fbc682e742dd`）；backend 沿用 v3.0.2 构建 `583da1057605` |
+| B3 | ~~未部署 / 未公网验证~~ | 依赖 B2；且安全组需在腾讯云控制台放行 3001 | ✅ **已解除**：阶段 A 已部署并验证（§13）；安全组 3001 已放行 |
 | B4 | **Nginx 未改动** | 按「不破坏现有服务」原则，需你在阶段 A 通过后授权 | §7.3 单行改动 + 备份 + 回滚方案已备好 |
 
 ### 11.2 需你决策
@@ -467,7 +468,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## 12. 最终结论
 
-# ❌ NOT READY FOR PUBLIC DEMO
+# ✅ PHASE A READY（域名 / HTTPS 待阶段 B）
 
 **理由（逐条对应本报告证据）**
 
@@ -492,8 +493,76 @@ sudo nginx -t && sudo systemctl reload nginx
 | 口径 | 结论 |
 | --- | --- |
 | **READY FOR SERVER DEPLOY**（产物可直接上服务器构建） | ✅ **是** |
-| **READY FOR PUBLIC DEMO**（已部署并公网验证） | ❌ 否 —— 部署尚未发生 |
+| **PHASE A READY**（已部署 + 公网 IP 验证，同源反代修复生效） | ✅ **是** —— 实测见 §13 |
+| **READY FOR PUBLIC DEMO**（域名 `rag.changziqi.com` + HTTPS 已切换） | ❌ 否 —— 阶段 B 未执行（Nginx 改一行 `proxy_pass` 至 3001） |
 
-**解除后无需再改代码**：剩余工作全是执行动作 —— 服务器构建 → 阶段 A 验证 → 阶段 B 改一行 Nginx。
-本地侧已经冻结在 `a2aad25` / `v3.0.0`，不需要新的代码变更。
-本报告将在上述步骤完成后**追加实测结果**（部署时间、镜像 ID、容器状态、公网 URL、health 输出、冒烟结果），并把结论更新为 READY FOR PUBLIC DEMO。
+**阶段 A 已实测完成**（2026-09-17）：服务器部署 `v3.0.3`、backend+web 均 healthy、同源反代修复生效、
+鉴权门 / 只读锁 / 真实数据 / 聊天冒烟 / 公网可达 / 重启恢复全部通过（§13）；legacy V2 保持运行未受影响。
+**无需再改代码**：阶段 A 已闭环。剩余工作仅阶段 B 的执行动作 —— Nginx 改一行 `proxy_pass`，需你授权后执行。
+本地侧冻结在 `74a51ce`/`v3.0.0` 与部署修复 `ead406a`/`v3.0.3`，不需要新的代码变更。
+实测结果（镜像 ID、容器状态、公网 URL、health 输出、冒烟结果）已写入 §13。
+
+---
+
+## 13. 阶段 A 执行实测（2026-09-17）
+
+### 13.1 交付版本与传输
+
+- **部署提交**：`ead406a`（分支 `upgrade/v3-enterprise-copilot`）；**标签** `v3.0.3`（annotated，对象 `9c92a6b`）。
+- v3.0.3 相对 v3.0.2 的**唯一代码改动**：`apps/web/next.config.ts` 把 `API_PROXY_TARGET` 的**构建期回退默认值**由
+  `http://127.0.0.1:8000` 改为 `http://backend:8000`。
+  - **根因**：Next.js `rewrites()` 在 `next build` 时烘焙目标，运行期 `API_PROXY_TARGET` 环境变量无法覆盖；
+    v3.0.2 在服务器构建时该变量为空 → 回退 `127.0.0.1:8000` 被写死 → web 容器反代 `backend:8000` 实际指向自身
+    127.0.0.1，**ECONNREFUSED**，所有经 3001 的 `/api` / `/health` 返回 **500**。
+  - **修复**：容器内恒为 `backend:8000`，IP 阶段与域名阶段都正确；**域名切换纯属 Nginx 改动、不需重建镜像**。
+- **传输**：`git bundle create - ^v3.0.2 v3.0.3` 经 SSH 管道直送服务器 `/tmp/erc-v3.0.3.bundle`（1725 B，未落本地文件），
+  服务器 `git fetch ... v3.0.3:refs/tags/v3.0.3 && git checkout -f v3.0.3`。`git bundle verify` 通过
+  （含 `refs/tags/v3.0.3`，要求 `bf75c0a` 已存在 = v3.0.2，满足）。
+
+### 13.2 服务器环境（部署时实测）
+
+| 项 | 实测值 |
+| --- | --- |
+| 主机 | `VM-0-16-ubuntu`（Ubuntu 22.04.5，2 vCPU / 1.9 GiB） |
+| Swap | **已加 2 GB**（`/swapfile`，写入 `/etc/fstab`，`free -h` 确认） |
+| 部署目录 | `/opt/enterprise-rag-copilot/repo`，checkout `v3.0.3`，工作树干净 |
+| `.env` | 5084 B，`chmod 600`，未触碰（gitignored） |
+| 构建镜像 | **仅重建 `rag-copilot-web:3.0.0`**（backend 未变） |
+| 构建参数 | `NPM_REGISTRY=https://mirrors.cloud.tencent.com/npm/`（腾讯云内网镜像，npm ci ~75 s） |
+| web 镜像 | `fbc682e742dd`，**1.26 GB** |
+| backend 镜像 | `583da1057605`（v3.0.2 时构建，未重建），471 MB，healthy |
+
+### 13.3 容器状态（部署后）
+
+| 容器 | 镜像 | 端口 | 状态 |
+| --- | --- | --- | --- |
+| `enterprise-rag-copilot-backend-1` | `rag-copilot-backend:3.0.0` | **`127.0.0.1:18000`→8000** | Up, healthy（仅本机可达，符合约束） |
+| `enterprise-rag-copilot-web-1` | `rag-copilot-web:3.0.0` | `0.0.0.0:3001`→3001 | Up, healthy |
+| `enterprise-rag-demo`（legacy V2） | — | `0.0.0.0:8502`→8501 | **Up 3 weeks, healthy（未停止，约束满足）** |
+
+> `docker compose up -d` 仅重建 web 容器，backend 保持运行（Up 24 min）；legacy 从未被触碰。
+
+### 13.4 功能验收（全部经 `:3001` 同源反代）
+
+| # | 验证项 | 结果 |
+| --- | --- | --- |
+| 1 | `/health` 经 web 反代 | **200**（修复前 500 ECONNREFUSED） |
+| 2 | `/api/auth/status` 经 web 反代 | **200**，body `{"password_required":true,"read_only":true,"app_name":"Enterprise RAG Copilot","version":"3.0.0"}` |
+| 3 | **鉴权门**：11 个受保护端点（`/api/knowledge/*`、`/api/overview`、`/api/settings`、`/api/settings/prompts`、`/api/insights/coverage`、`/api/evaluation/dataset`、`/api/activity`、`/api/agent/catalog`、`/api/solutions/config`、`/api/rag/retrieve`、`/api/chat`、`/api/rag/query`…）匿名访问 | **401**（全部）；带 `X-Demo-Token` **200**（全部） |
+| 4 | **只读锁**：`POST /api/knowledge/upload`（带 token） | **403 `read_only`** |
+| 5 | `/api/knowledge/stats`（带 token） | **200**：`document_count=24, indexed_document_count=24, chunk_count=283, total_chars=58524, retriever_mode=hybrid, embedding_provider=hashing, index_state=ready` |
+| 6 | **Golden Demo 冒烟**：`POST /api/chat`（`question` 字段，带 token） | **200**，回答 546 字、3 引用 / 3 来源，`HAS_ERROR=false`；检索→生成→引用链路端到端打通 |
+| 7 | **公网可达性**：`http://81.70.51.32:3001/health`（本机外网直连） | **200**（`{"status":"ok",...,"index_ready":true}`）—— 安全组已放行 3001 |
+| 8 | **`docker compose restart` 后复验** | /health 3 次轮询内恢复 200；legacy `8502` 仍 200 |
+
+> 说明：本地同源代理（§6.3）验证的是「反代能到后端」；阶段 A 在服务器上验证了「反代目标正确（backend:8000 而非 127.0.0.1）」，
+> 这是 v3.0.3 修复直接对应的验收点。
+
+### 13.5 阶段 A 结论
+
+- **PHASE A READY** ✅
+- 服务器已成功部署 `v3.0.3`：backend + web 均 healthy，同源反代修复生效；鉴权门 / 只读锁 / 真实数据（24 文档 / 283 块）/
+  聊天冒烟 / 公网可达 / 重启恢复全部通过；legacy V2 保持运行未受影响；约束（不改 Nginx、不停止 legacy、backend 仅绑 127.0.0.1、web 用 3001）全部满足。
+- **仍待阶段 B（不影响 PHASE A 结论）**：域名 `rag.changziqi.com` 切换 + HTTPS —— Nginx 将 `proxy_pass` 由 `:8502` 改至 `:3001`（单行改动 + 备份 + 回滚方案见 §7.3）。
+  故结论为 **PHASE A READY**，而非 **READY FOR PUBLIC DEMO**。
+- **未推送 GitHub**：本机 → GitHub 网络临时不可达，已用 git bundle 直送服务器；远端同步可后续补推（不影响部署与验证）。
