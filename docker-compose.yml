@@ -21,6 +21,12 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
+      # PIP_INDEX_URL / NPM_REGISTRY default empty (upstream). A host whose route
+      # to PyPI / npm is slow can set them in .env to a regional mirror; the
+      # values are interpolated here and passed as build args (see each
+      # Dockerfile). They are build-time only and never appear in the bundle.
+      args:
+        PIP_INDEX_URL: "${PIP_INDEX_URL:-}"
     image: rag-copilot-backend:3.0.0
     env_file:
       - .env
@@ -84,6 +90,8 @@ services:
         #   set to ""    -> ""
         #   set to a URL -> that URL
         NEXT_PUBLIC_API_BASE_URL: "${NEXT_PUBLIC_API_BASE_URL-}"
+        # See the backend service: a regional npm mirror, build-time only.
+        NPM_REGISTRY: "${NPM_REGISTRY:-}"
     image: rag-copilot-web:3.0.0
     environment:
       PORT: "3001"

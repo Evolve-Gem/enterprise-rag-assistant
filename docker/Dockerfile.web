@@ -16,8 +16,20 @@
 
 FROM node:22-alpine AS deps
 WORKDIR /app
+# Optional npm mirror. Empty means "use the default registry", so the image
+# stays portable; a deployment whose route to registry.npmjs.org is slow or
+# restricted points NPM_REGISTRY at a regional mirror through .env.
+#
+# Measured from a mainland Tencent Cloud host: registry.npmjs.org served
+# 146 KB/s while the regional mirror served 49 MB/s. `npm ci` fetches the whole
+# dependency tree, so the difference is minutes versus far too long.
+ARG NPM_REGISTRY=
 COPY apps/web/package.json apps/web/package-lock.json* ./
-RUN npm ci --no-audit --no-fund
+RUN if [ -n "$NPM_REGISTRY" ]; then \
+      echo "npm registry override: $NPM_REGISTRY"; \
+      sed -i "s#https://registry.npmjs.org/#${NPM_REGISTRY}#g" package-lock.json; \
+    fi; \
+    npm ci --no-audit --no-fund
 
 FROM node:22-alpine AS builder
 WORKDIR /app
