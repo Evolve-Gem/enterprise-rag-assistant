@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Enterprise RAG Copilot · Web
 
-## Getting Started
+Next.js 15 前端（App Router + TypeScript + Tailwind CSS 4）。
 
-First, run the development server:
+## 开发
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.local.example .env.local      # 设置 NEXT_PUBLIC_API_BASE_URL
+npm run dev                           # http://localhost:3001
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+后端需另行启动（见仓库根 README）：
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cd ../../backend && uvicorn app.main:app --port 8000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 脚本
 
-## Learn More
+| 命令 | 说明 |
+| --- | --- |
+| `npm run dev` | 开发服务器（:3001） |
+| `npm run build` | 生产构建 |
+| `npm start` | 启动生产构建 |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | tsc --noEmit |
 
-To learn more about Next.js, take a look at the following resources:
+## 目录
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/            10 个页面（App Router）
+├── components/
+│   ├── layout/     Sidebar · Topbar · AppShell（含演示密码门）
+│   ├── ui/         Design System 组件（button/card/badge/field/data/tabs/drawer/states/toggle）
+│   ├── rag/        Markdown 引用渲染 · 答案卡 · 来源抽屉 · 检索面板 · 生成态
+│   ├── agent/      Trace 时间线
+│   ├── mascot/     原创 SVG「知识精灵」小知（7 种状态）
+│   └── providers/  Theme · Toast
+└── lib/            api 客户端 · types（镜像后端 Pydantic）· hooks · utils
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+设计令牌集中在 `src/app/globals.css` 的 `@theme` 与 `.dark`，明暗两套值独立调校。
