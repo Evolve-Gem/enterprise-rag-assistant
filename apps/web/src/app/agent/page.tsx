@@ -104,7 +104,7 @@ export default function AgentPage() {
   const activeEngine = catalog.status === "success" ? catalog.data.active_engine : "—";
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
       {/* ------------------------------------------------------- controls */}
       <div className="space-y-4">
         <Card>
@@ -286,7 +286,7 @@ export default function AgentPage() {
                   </>
                 }
               />
-              <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <p className="text-2xs text-[var(--color-ink-faint)]">识别意图</p>
                   <p className="mt-0.5 font-mono text-sm text-[var(--color-ink)]">

@@ -177,7 +177,7 @@ def test_reindex_reports_counts(service):
 # ------------------------------------------------------------- guard rails
 
 
-def test_read_only_mode_blocks_every_write(monkeypatch):
+def test_read_only_mode_blocks_every_write(sandbox, monkeypatch):
     monkeypatch.setenv("DEMO_READ_ONLY", "true")
     reload_settings()
     service = KnowledgeService(get_settings())
@@ -188,6 +188,20 @@ def test_read_only_mode_blocks_every_write(monkeypatch):
         service.update_document(make_document_id("FAQ.md"), "x")
     with pytest.raises(ReadOnlyError):
         service.delete_document(make_document_id("FAQ.md"))
+    # Rebuilding the index writes the cache; the README documents read-only as
+    # closing every write path, so this must be guarded too.
+    with pytest.raises(ReadOnlyError):
+        service.refresh()
+
+
+def test_read_only_mode_still_allows_reads(sandbox, monkeypatch):
+    monkeypatch.setenv("DEMO_READ_ONLY", "true")
+    reload_settings()
+    service = KnowledgeService(get_settings())
+
+    assert service.list_documents(limit=10).total == 5
+    assert service.stats().chunk_count > 0
+    assert service.get_chunks(make_document_id("检索链路.md")).total > 0
 
 
 def test_sanitize_filename_strips_traversal_and_reserved_names():

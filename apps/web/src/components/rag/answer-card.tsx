@@ -136,7 +136,7 @@ export function AnswerCard({
             <div className="space-y-4">
               <RetrievalFunnel stats={stats} />
               <RetrievalPanel chunks={response.retrieved_chunks} />
-              <div className="grid gap-5 border-t border-[var(--color-line)] pt-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 border-t border-[var(--color-line)] pt-4 lg:grid-cols-2">
                 <RerankComparison chunks={response.retrieved_chunks} />
                 <BranchBreakdown chunks={response.retrieved_chunks} />
               </div>

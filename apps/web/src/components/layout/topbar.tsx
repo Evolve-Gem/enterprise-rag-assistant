@@ -47,8 +47,13 @@ export function Topbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {/* The status badge cannot shrink and is the only thing that overflows on
+            a narrow viewport; hide it below `sm` and keep it for real work widths. */}
         {health ? (
-          <Badge tone={health.status === "ok" ? "success" : "warning"}>
+          <Badge
+            tone={health.status === "ok" ? "success" : "warning"}
+            className="max-sm:hidden"
+          >
             {health.status === "ok" ? "服务正常" : "降级运行"}
             <span className="opacity-60">·</span>
             {health.agent_engine}

@@ -30,7 +30,7 @@ export default function GapsPage() {
   return (
     <div className="space-y-5">
       {/* ---------------------------------------------------------- summary */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
         <Card>
           <CardHeader dense title="覆盖总览" description="按预设资料类型的确定性判定" icon={<Target className="size-4" />} />
           <CardContent className="space-y-4">
@@ -71,7 +71,7 @@ export default function GapsPage() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatCard
             label="分析文档数"
             value={formatCount(report.analyzed_document_count)}

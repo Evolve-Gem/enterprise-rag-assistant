@@ -84,7 +84,7 @@ export default function ExplorerPage() {
   }, [stats]);
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)_minmax(0,26rem)]">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)_minmax(0,26rem)]">
       {/* ------------------------------------------------- document list */}
       <Card className="flex max-h-[calc(100dvh-7rem)] min-h-0 flex-col">
         <CardHeader
@@ -186,7 +186,7 @@ export default function ExplorerPage() {
                 }
               />
               <CardContent className="space-y-3">
-                <div className="grid gap-x-8 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
                   <div>
                     <DefRow label="知识块数">{detailData.chunk_count}</DefRow>
                     <DefRow label="字符数">{formatCount(detailData.char_count ?? 0)}</DefRow>

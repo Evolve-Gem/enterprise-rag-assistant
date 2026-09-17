@@ -31,7 +31,7 @@ export default function SettingsPage() {
   const s = settings.data;
 
   return (
-    <div className="grid gap-5 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
       {/* -------------------------------------------------- system status */}
       <Card className="xl:col-span-2">
         <CardHeader
@@ -289,7 +289,7 @@ export default function SettingsPage() {
       {/* ----------------------------------------------------------- about */}
       <Card className="xl:col-span-2">
         <CardHeader title="关于" icon={<Database className="size-4" />} dense />
-        <CardContent className="grid gap-x-10 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
           <div>
             <DefRow label="产品">{s.app.name}</DefRow>
             <DefRow label="版本" mono>

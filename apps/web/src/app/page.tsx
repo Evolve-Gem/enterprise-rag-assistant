@@ -137,7 +137,7 @@ export default function OverviewPage() {
       {/* ------------------------------------------------------ knowledge */}
       <section className="space-y-3">
         <SectionLabel>Knowledge Base</SectionLabel>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="文档"
             value={formatCount(knowledge.document_count)}
@@ -176,7 +176,7 @@ export default function OverviewPage() {
       {/* ---------------------------------------------------------- agent */}
       <section className="space-y-3">
         <SectionLabel>Agent</SectionLabel>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Agent 运行"
             value={formatCount(agent.run_count)}
@@ -208,7 +208,7 @@ export default function OverviewPage() {
       {/* ------------------------------------------------------------ rag */}
       <section className="space-y-3">
         <SectionLabel>RAG</SectionLabel>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="问答次数"
             value={formatCount(rag.question_count)}
@@ -239,7 +239,7 @@ export default function OverviewPage() {
       </section>
 
       {/* -------------------------------------------------- detail panels */}
-      <div className="grid gap-5 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         {/* coverage */}
         <Card className="xl:col-span-1">
           <CardHeader
@@ -385,7 +385,7 @@ export default function OverviewPage() {
       </div>
 
       {/* ------------------------------------------- recent documents row */}
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader
             title="最近更新的文档"

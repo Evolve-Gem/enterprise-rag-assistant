@@ -65,7 +65,13 @@ class KnowledgeService:
         return self._index
 
     def refresh(self, *, force_vectors: bool = False) -> ReindexResult:
-        """Rebuild the whole index from disk."""
+        """Rebuild the whole index from disk.
+
+        Guarded by the read-only lock: rebuilding writes the index cache, and the
+        demo lock is documented as closing every write path. Leaving it open made
+        the code contradict the README.
+        """
+        assert_writable(self.settings)
         self.index.build(force_vectors=force_vectors, use_cache=False)
         report = self.index.last_build
         return ReindexResult(

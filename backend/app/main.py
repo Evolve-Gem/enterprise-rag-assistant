@@ -23,6 +23,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .api.routes import (
     agent,
@@ -122,6 +123,45 @@ def create_app() -> FastAPI:
     )
 
     register_exception_handlers(application)
+
+    # ---------------------------------------------------------------- auth gate
+    # Enforced centrally rather than per-route. Route-level dependencies are easy
+    # to forget (the read-only knowledge endpoints were initially left public,
+    # which made DEMO_PASSWORD protect the query endpoint but not the raw
+    # documents), so the gate lives here with an explicit public allowlist.
+    _PUBLIC_PATHS = {
+        "/",
+        "/health",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/api/auth/status",
+        "/api/auth/login",
+    }
+
+    @application.middleware("http")
+    async def _demo_password_gate(request: Request, call_next):
+        settings = get_settings()
+        path = request.url.path
+        needs_token = bool(settings.demo_password) and (
+            path.startswith("/api") or path.startswith("/docs") or path.startswith("/openapi")
+        )
+        if needs_token and path not in _PUBLIC_PATHS:
+            from .api.deps import verify_demo_token
+
+            token = request.headers.get("X-Demo-Token") or request.query_params.get("demo_token") or ""
+            if not verify_demo_token(token, settings):
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "error": {
+                            "code": "unauthorized",
+                            "message": "需要演示访问密码。",
+                            "details": {},
+                        }
+                    },
+                )
+        return await call_next(request)
 
     @application.middleware("http")
     async def _timing_middleware(request: Request, call_next):

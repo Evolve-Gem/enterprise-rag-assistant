@@ -47,7 +47,7 @@ export default function ActivityPage() {
       {/* ------------------------------------------------------------ stats */}
       {stats.status === "success" ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="总记录"
               value={stats.data.total}
@@ -75,7 +75,7 @@ export default function ActivityPage() {
             />
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             <Card>
               <CardHeader dense title="按类型分布" icon={<Filter className="size-4" />} />
               <CardContent>

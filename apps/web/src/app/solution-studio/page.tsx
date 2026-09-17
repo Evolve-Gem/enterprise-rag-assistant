@@ -117,7 +117,7 @@ export default function SolutionStudioPage() {
   const analysis = result?.analysis;
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
       {/* ----------------------------------------------------- intake form */}
       <div className="space-y-4">
         <Card>
@@ -147,7 +147,7 @@ export default function SolutionStudioPage() {
               填入示例客户需求（职业院校知识库）
             </button>
 
-            <div className="grid gap-3 border-t border-[var(--color-line-faint)] pt-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 border-t border-[var(--color-line-faint)] pt-3 sm:grid-cols-2">
               <Field label="客户名称">
                 <Input
                   value={form.customer}
@@ -284,7 +284,7 @@ export default function SolutionStudioPage() {
                   </>
                 }
               />
-              <CardContent className="grid gap-4 sm:grid-cols-4">
+              <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                 <div>
                   <p className="text-2xs text-[var(--color-ink-faint)]">客户类型</p>
                   <p className="mt-0.5 text-sm text-[var(--color-ink)]">
@@ -352,7 +352,7 @@ export default function SolutionStudioPage() {
                 ) : null}
 
                 {tab === "analysis" && analysis ? (
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div className="space-y-3">
                       <div>
                         <SectionLabel>核心需求</SectionLabel>

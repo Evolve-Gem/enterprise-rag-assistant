@@ -166,7 +166,7 @@ export default function DocumentsPage() {
 
       {/* ------------------------------------------------------------ stats */}
       {stats.status === "success" ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: "文档", value: stats.data.document_count, hint: `${stats.data.indexed_document_count} 个已索引` },
             { label: "知识块", value: stats.data.chunk_count, hint: `${stats.data.vectorized_chunk_count} 个已向量化` },

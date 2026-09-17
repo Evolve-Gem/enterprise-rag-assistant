@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from ..core.config import Settings, get_settings
+from ..core.config import Settings, get_settings, resolve_agent_engine
 from ..core.errors import AppError
 from ..core.logging import get_logger
 from ..rag.index import KnowledgeIndex, get_index
@@ -199,7 +199,10 @@ class InsightsService:
             tool_count=len(tools.names()),
             tool_call_count=sum(len(item.tools) for item in agent_records),
             success_rate=round(len(successful) / len(agent_records), 4) if agent_records else 0.0,
-            engine=self.settings.agent_engine,
+            # Report the engine that actually runs, not the configured placeholder.
+            # Showing "auto" while the topbar shows "langgraph" makes the dashboard
+            # contradict itself in front of a reviewer.
+            engine=resolve_agent_engine(self.settings.agent_engine),
             top_skills=[
                 {"skill": name, "count": count}
                 for name, count in list(activity_stats.by_skill.items())[:5]

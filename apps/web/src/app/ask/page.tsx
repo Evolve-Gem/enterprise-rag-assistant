@@ -181,7 +181,7 @@ export default function AskPage() {
             </button>
 
             {showAdvanced ? (
-              <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Field label="检索模式" hint="hybrid = 关键词 + 向量">
                   <SegmentedControl<Mode>
                     value={mode}

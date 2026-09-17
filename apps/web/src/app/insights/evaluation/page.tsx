@@ -217,7 +217,7 @@ export default function EvaluationPage() {
       {/* ----------------------------------------------------------- metrics */}
       {result ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <StatCard
               label={`Hit@${result.summary.k}`}
               value={formatPercent(result.summary.hit_at_k, 1)}

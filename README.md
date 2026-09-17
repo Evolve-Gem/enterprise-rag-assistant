@@ -19,8 +19,9 @@
 | **执行引擎** | LangGraph 1.2 与内置状态机双引擎，共用同一套节点函数 |
 | **可观测性** | 每个节点记录耗时/输入/输出；SQLite 活动台账；Dashboard 真实指标 |
 | **评测** | Hit@K / MRR / Recall@K / 关键词覆盖（确定性计算）+ 人工答案评分 |
-| **规模** | 后端约 50 个模块 · 159 个 pytest 用例 · 前端 10 个页面 |
+| **规模** | 后端约 50 个模块 · 161 个 pytest 用例 · 前端 10 个页面 |
 | **实测指标** | 检索 Hit@4 = 90%，MRR = 0.800（10 条冻结评测集，真实知识库） |
+| **验收状态** | ✅ **READY FOR DEMO** —— 见 [`docs/V3_ACCEPTANCE_REPORT.md`](docs/V3_ACCEPTANCE_REPORT.md) |
 
 ---
 
@@ -43,9 +44,39 @@
 
 ---
 
-## 3. 截图
+## 3. 截图（V3，真实运行数据）
 
-> 📷 **V2（Streamlit 原型，现已冻结在 `legacy/`）**
+> 全部来自本机真实运行的 V3，1440×900，无 mock、无开发者工具、无密钥。
+> 生成方式见 [`docs/V3_ACCEPTANCE_REPORT.md`](docs/V3_ACCEPTANCE_REPORT.md)。
+
+**Overview — 四组真实指标（24 文档 / 283 知识块 / 16 次 Agent 运行 / 溯源率 100%）**
+
+![Overview](docs/images/v3/01-overview.png)
+
+**Ask — 带引用编号的回答，编号可点击**
+
+![Ask](docs/images/v3/02-ask.png)
+
+**Citation Drill-down — 点开 `[1]` 看到被引用的原文片段与四类检索分数**
+
+![Citation Drawer](docs/images/v3/03-citation-drawer.png)
+
+**Agent Workspace — 意图、置信度、Skill、Tool 调用与 8 节点轨迹**
+
+![Agent Workspace](docs/images/v3/04-agent-workspace.png)
+
+| 展开的 Agent Trace | Solution Studio（8 章节 + 引用） |
+| --- | --- |
+| ![Agent Trace](docs/images/v3/05-agent-trace.png) | ![Solution Studio](docs/images/v3/06-solution-studio.png) |
+
+| Knowledge Explorer（含检索探测） | Knowledge Gaps（覆盖判定 + 证据） | Evaluation（检索指标） |
+| --- | --- | --- |
+| ![Explorer](docs/images/v3/07-knowledge-explorer.png) | ![Gaps](docs/images/v3/08-knowledge-gaps.png) | ![Evaluation](docs/images/v3/09-evaluation.png) |
+
+深色主题同样是一等公民（`dark-overview.png` / `dark-ask.png` / `dark-solution.png` 见同目录）。
+
+<details>
+<summary><b>Legacy — Streamlit V2（已冻结在 <code>legacy/</code>）</b></summary>
 
 | 工作台总览 | RAG 问答结果 |
 | --- | --- |
@@ -55,8 +86,9 @@
 | --- | --- |
 | ![检索详情](docs/images/04-retrieved-source-detail.png) | ![方案](docs/images/05-solution-workflow.png) |
 
-V3 的界面（Overview / Ask / Agent Workspace / Solution Studio / Knowledge Explorer / Evaluation / Activity / Settings）
-请按 [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) 的五个场景自行截图 —— 本项目不放未经验证的示意图。
+V2 仍可运行：`streamlit run legacy/app.py`。
+</details>
+
 
 ---
 
@@ -228,8 +260,11 @@ graph LR
 | **引用溯源** | 编号上下文 → 角标 → 抽屉 → 原文 + 分数；越界编号自动剔除 | ✅ DONE |
 | **Prompt 版本化** | `prompts/v1/*.md` 运行时加载，Settings 页可见占位符 | ✅ DONE |
 | **安全** | 演示密码（HMAC 令牌）、只读模式、文件名安全化、路径穿越防护、密钥打码 | ✅ DONE |
+| **访问控制** | `DEMO_PASSWORD` 由中间件统一拦截**全部 `/api` 读取与写入**，仅 `/health`、`/api/auth/*` 公开 | ✅ DONE |
+| **响应式** | 1440 / 1280 / 1080 三档零横向溢出；明暗双主题各页零 console 错误 | ✅ DONE |
+| **移动端** | 390px 下部分页面存在横向溢出（判据见验收报告） | ⚠️ PARTIAL |
 | **Docker** | backend + web + 可选 pgvector / legacy profile | ✅ DONE |
-| **测试** | 159 个 pytest 用例 + tsc 0 错误 + ESLint 0 警告 + 生产构建通过 | ✅ DONE |
+| **测试** | 161 个 pytest 用例 + tsc 0 错误 + ESLint 0 警告 + 生产构建通过 | ✅ DONE |
 | **pgvector** | `PgVectorStore` 已实现（raw SQL + HNSW），**本机无 PostgreSQL，未做集成验证** | ⚠️ PARTIAL |
 | **LLM 重排序** | `RERANK_PROVIDER=llm` 已实现并有启发式兜底，默认关闭以控制成本 | ⚠️ PARTIAL |
 | **对话记忆** | 历史仅用于消解指代，尚未做查询改写与长期记忆 | ⚠️ PARTIAL |
@@ -250,7 +285,7 @@ graph LR
 | 检索 | 自研 BM25 · NumPy 向量索引 · RRF 融合 · IDF 加权重排 | 无重量级依赖，全部可解释 |
 | 文档解析 | pypdf · python-docx | |
 | 存储 | SQLite（活动台账）· NPZ（索引缓存）· JSON（评测集） | 零外部依赖即可运行 |
-| 测试 | pytest 9 · httpx · FastAPI TestClient | 159 用例，全程不联网 |
+| 测试 | pytest 9 · httpx · FastAPI TestClient | 161 用例，全程不联网 |
 | 部署 | Docker Compose | backend / web / 可选 pgvector / 可选 legacy |
 
 ---
@@ -297,7 +332,7 @@ docker compose --profile legacy up # 额外启动 V2 Streamlit 演示（:8502）
 
 ```bash
 cd backend
-../.venv/Scripts/python -m pytest -q      # 159 passed
+../.venv/Scripts/python -m pytest -q      # 161 passed
 
 cd ../apps/web
 npm run typecheck                          # tsc 0 错误
@@ -345,17 +380,20 @@ npm run build                              # 生产构建
 
 ### 检索指标（确定性计算，可复现）
 
-在 10 条冻结评测集上、针对当前 24 篇知识库、`k=4`、`mode=hybrid`：
+在 10 条冻结评测集上、针对当前 24 篇知识库、`k=4`、`mode=hybrid`、`rerank=heuristic`
+（**验收实测 2026-09-17**，复现方式：`POST /api/evaluation/run {"k":4}`）：
 
 | 指标 | 数值 | 含义 |
 | --- | --- | --- |
-| **Hit@4** | **90.0%** | 期望文档进入 Top-4 的比例 |
+| **Hit@4** | **90.0%** | 期望文档进入 Top-4 的比例（10 条中 9 条命中） |
 | **MRR** | **0.800** | 首个命中的名次倒数均值 |
 | **Recall@4** | **69.2%** | 期望文档被召回的比例 |
 | **关键词覆盖** | 45.6% | 召回片段覆盖问题关键词的比例 |
 | **平均检索延迟** | 约 2 ms | 不含 LLM 生成 |
 
-> 唯一一条 MISS 是「知识库里有哪些文档？」—— 这是一条**概览类**问题，本身没有「期望文档」，属于评测集设计问题，已在种子数据中替换为真正的检索问题。
+> 评测集中仍有一条 MISS：「知识库里有哪些文档？」—— 这是一条**概览类**问题，本身没有「期望文档」。
+> 种子数据已把它换成真正的检索问题，但**已冻结的评测集不会自动重写**，所以本轮结果仍受它影响。
+> 这是评测集设计问题，不是检索退化；把它算进去反而更诚实。
 
 ### 答案质量
 
@@ -382,21 +420,21 @@ enterprise-rag-assistant/
 │   │   ├── services/             # 8 个服务（知识/RAG/Agent/方案/洞察/评测/台账/设置）
 │   │   ├── rag/                  # 索引 · 切分 · BM25 · 向量 · 检索 · 重排 · 引用 · Prompt
 │   │   └── agents/               # state · router · graph · skills · tools
-│   ├── tests/                    # 159 个 pytest 用例
+│   ├── tests/                    # 161 个 pytest 用例
 │   └── data/                     # 运行时数据（索引缓存 / 台账 / 评测集，已 gitignore）
 ├── knowledge_base/               # 知识资产（24 篇，可自由替换）
 ├── prompts/v1/                   # 版本化 Prompt 模板（运行时加载）
 ├── legacy/                       # 冻结的 V2 Streamlit 演示
 ├── docker/                       # Dockerfile.backend · Dockerfile.web
 ├── docker-compose.yml
-└── docs/                         # ARCHITECTURE · INTERVIEW_GUIDE · DEMO_SCRIPT
+└── docs/                         # ARCHITECTURE · INTERVIEW_GUIDE · DEMO_SCRIPT · V3_ACCEPTANCE_REPORT
 ```
 
 ---
 
 ## 14. Roadmap
 
-**已完成（V3.0）**：前后端分离 · 混合检索 · 重排序 · 引用溯源 · Agent/Skill/Tool 三层 · 双引擎 · Trace · 方案生成 · 缺口分析 · 评测中心 · 活动台账 · Prompt 版本化 · Docker · 159 个测试。
+**已完成（V3.0）**：前后端分离 · 混合检索 · 重排序 · 引用溯源 · Agent/Skill/Tool 三层 · 双引擎 · Trace · 方案生成 · 缺口分析 · 评测中心 · 活动台账 · Prompt 版本化 · Docker · 161 个测试 · 本地验收（49/49 安全项、40 次真实页面渲染）。
 
 **下一步**：
 

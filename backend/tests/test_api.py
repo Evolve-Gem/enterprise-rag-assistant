@@ -103,6 +103,50 @@ def test_read_only_mode_blocks_writes_through_the_api(monkeypatch, sandbox):
         assert response.json()["error"]["code"] == "read_only"
 
 
+def test_password_gate_protects_every_read_endpoint(monkeypatch, sandbox):
+    """Regression: the gate used to be per-route, so the raw documents stayed open.
+
+    A password that protects the query endpoint but not the underlying corpus is
+    worse than useless, because it looks like it protects something.
+    """
+    monkeypatch.setenv("DEMO_PASSWORD", "s3cret")
+    reload_settings()
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    protected = [
+        ("GET", "/api/knowledge/documents"),
+        ("GET", "/api/knowledge/stats"),
+        ("GET", "/api/overview"),
+        ("GET", "/api/settings"),
+        ("GET", "/api/settings/prompts"),
+        ("GET", "/api/insights/coverage"),
+        ("GET", "/api/evaluation/dataset"),
+        ("GET", "/api/activity"),
+        ("GET", "/api/agent/catalog"),
+        ("GET", "/api/solutions/config"),
+        ("GET", "/api/rag/retrieve?q=Rerank&top_k=3"),
+    ]
+    public = ["/health", "/api/auth/status", "/"]
+
+    with TestClient(create_app()) as guarded:
+        for method, path in protected:
+            anonymous = guarded.request(method, path)
+            assert anonymous.status_code == 401, f"{path} was reachable without a token"
+            assert anonymous.json()["error"]["code"] == "unauthorized"
+
+        for path in public:
+            assert guarded.get(path).status_code == 200, f"{path} should stay public"
+
+        token = guarded.post("/api/auth/login", json={"password": "s3cret"}).json()["token"]
+        headers = {"X-Demo-Token": token}
+        for method, path in protected:
+            allowed = guarded.request(method, path, headers=headers)
+            assert allowed.status_code == 200, f"{path} rejected a valid token ({allowed.status_code})"
+
+
 # ----------------------------------------------------------------- overview
 
 
