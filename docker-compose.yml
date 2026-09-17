@@ -1,0 +1,87 @@
+# Enterprise RAG Copilot — 一键启动（web + backend，可选 pgvector）
+#
+#   docker compose up --build            # 默认：web + backend（本地向量索引）
+#   docker compose --profile pg up       # 额外启动 PostgreSQL + pgvector
+#   docker compose --profile legacy up   # 额外启动 legacy Streamlit 演示
+#
+# 环境变量从仓库根目录的 .env 读取（不存在时请先 `cp .env.example .env`）。
+
+name: enterprise-rag-copilot
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    image: rag-copilot-backend:3.0.0
+    env_file:
+      - .env
+    environment:
+      # Inside the compose network the frontend talks to `backend:8000`, and the
+      # browser talks to the published port.
+      ENVIRONMENT: production
+      DATA_DIR: /app/backend/data
+      CORS_ORIGINS: http://localhost:3001,http://127.0.0.1:3001
+      # Optional: point the vector store at the pg service (profile "pg").
+      VECTOR_STORE: ${VECTOR_STORE:-numpy}
+      DATABASE_URL: ${DATABASE_URL:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Keep the index cache / activity ledger across restarts, and allow
+      # uploading documents without rebuilding the image.
+      - backend-data:/app/backend/data
+      - ./knowledge_base:/app/knowledge_base
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        # Baked into the client bundle at build time.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    image: rag-copilot-web:3.0.0
+    environment:
+      PORT: "3001"
+    ports:
+      - "3001:3001"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- optional
+  db:
+    image: pgvector/pgvector:pg16
+    profiles: ["pg"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-copilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-copilot}
+      POSTGRES_DB: ${POSTGRES_DB:-copilot}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-copilot} -d ${POSTGRES_DB:-copilot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  legacy:
+    build:
+      context: .
+      dockerfile: legacy/Dockerfile
+    image: rag-copilot-legacy:2.0.0
+    profiles: ["legacy"]
+    env_file:
+      - .env
+    ports:
+      - "8502:8501"
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+  pg-data:

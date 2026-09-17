@@ -1,3 +1,25 @@
+"""Legacy Streamlit demo (frozen V2 entry point).
+
+Run from the repository root::
+
+    streamlit run legacy/app.py
+
+This file is intentionally kept working but frozen: it is the original
+single-file Streamlit demo that the V3 Next.js + FastAPI product replaced.
+New work belongs in ``backend/`` and ``apps/web/``.
+"""
+
+# The demo lives one level down now, so the repository root and this directory
+# must both be importable before the local modules are imported.
+import sys
+from pathlib import Path as _Path
+
+_HERE = _Path(__file__).resolve().parent
+_ROOT = _HERE.parent
+for _candidate in (_HERE, _ROOT):
+    if str(_candidate) not in sys.path:
+        sys.path.insert(0, str(_candidate))
+
 import hmac
 import os
 from datetime import datetime
@@ -17,7 +39,7 @@ from kb_tools import (
 )
 
 
-KB_DIR = Path("knowledge_base")
+KB_DIR = _ROOT / "knowledge_base"
 MAX_TEXT_PREVIEW_CHARS = 5000
 ROUTE_MODE_MAP = {
     "自动判断": None,

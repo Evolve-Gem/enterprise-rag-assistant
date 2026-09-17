@@ -1,0 +1,1 @@
+"""Retrieval-augmented generation core (loaders, index, retrievers, rerank)."""

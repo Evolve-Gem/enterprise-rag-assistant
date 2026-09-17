@@ -1,13 +1,41 @@
-.venv/
-__pycache__/
-*.py[cod]
+# ---------------------------------------------------------------- secrets
 .env
 .env.*
 !.env.example
-chroma_db/
-.streamlit/secrets.toml
+!.env.local.example
+!**/.env.local.example
+
+# ---------------------------------------------------------------- python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# ------------------------------------------------- runtime data (no secrets, but local state)
+backend/data/
+!backend/data/.gitkeep
+chroma_db/
+*.sqlite3
+*.sqlite3-journal
+
+# ---------------------------------------------------------------- node
+node_modules/
+.next/
+out/
+build/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------------------------------------------------------------- misc
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
