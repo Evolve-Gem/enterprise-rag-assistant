@@ -42,9 +42,19 @@ import type {
   UploadResult,
 } from "./types";
 
-export const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
-).replace(/\/$/, "");
+/**
+ * Base URL for API calls.
+ *
+ * Empty (the production default) means **same origin**: the browser requests
+ * `/api/...` on whatever origin served the page, and Next.js proxies it to the
+ * backend (`API_PROXY_TARGET` in `next.config.ts`). That keeps the FastAPI port
+ * off the public internet and removes the whole class of bug where a stale
+ * `localhost:8000` gets baked into a client bundle.
+ *
+ * Set it to an absolute URL only for local development against a backend on a
+ * different origin.
+ */
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
 
 const TOKEN_KEY = "copilot.demo.token";
 
@@ -89,8 +99,9 @@ export class ApiError extends Error {
   }
 }
 
-const NETWORK_MESSAGE =
-  "无法连接后端服务。请确认 FastAPI 已在 " + API_BASE_URL + " 启动。";
+const NETWORK_MESSAGE = API_BASE_URL
+  ? `无法连接后端服务（${API_BASE_URL}）。请确认 FastAPI 已启动。`
+  : "无法连接后端服务。请确认后端（FastAPI）已启动。";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);

@@ -44,7 +44,11 @@ services:
       VECTOR_STORE: ${VECTOR_STORE:-numpy}
       DATABASE_URL: ${DATABASE_URL:-}
     ports:
-      - "8000:8000"
+      # Bound to loopback on purpose: the web service proxies /api and /health
+      # to this container over the compose network, so the API never needs a
+      # public port. Change the host port only if something else on the box
+      # already listens on 18000 (for example a gunicorn app).
+      - "127.0.0.1:${BACKEND_HOST_PORT:-18000}:8000"
     volumes:
       # Keep the index cache / activity ledger across restarts, and allow
       # uploading documents without rebuilding the image.
@@ -70,8 +74,14 @@ services:
     image: rag-copilot-web:3.0.0
     environment:
       PORT: "3001"
+      # Runtime proxy target for /api and /health (see next.config.ts). Because
+      # it is read at server start, changing this needs only a restart — no
+      # image rebuild — which is what makes the IP phase and the domain phase
+      # share one build.
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://backend:8000}
     ports:
-      - "3001:3001"
+      # The only publicly reachable port. Nginx (phase B) proxies to this one.
+      - "${WEB_HOST_PORT:-3001}:3001"
     depends_on:
       backend:
         condition: service_healthy
