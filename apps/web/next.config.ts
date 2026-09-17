@@ -3,13 +3,19 @@ import type { NextConfig } from "next";
 /**
  * API proxy target.
  *
- * Read when the server process starts (next.config is evaluated by `next start`),
- * so this is a RUNTIME setting, not a build-time one. In Docker it points at the
- * compose service (`http://backend:8000`); locally it defaults to the dev
- * backend. Because it is runtime, ONE built image works in every environment and
- * the API host can change without rebuilding.
+ * IMPORTANT: this value is BAKED INTO THE IMAGE at `next build` time, not read at
+ * runtime. Next.js evaluates `rewrites()` during the build and freezes the
+ * destination URLs, so a runtime env var cannot change them under `next start`
+ * (this is a well-known Next.js behaviour). Inside the compose network the
+ * backend is always the `backend` service on :8000, so that constant is correct
+ * for BOTH the public-IP phase and the domain phase — the domain switch is an
+ * Nginx concern outside the container. The value is therefore supplied as a
+ * build arg (see Dockerfile.web and docker-compose.yml) and defaults to
+ * http://backend:8000. The browser-facing NEXT_PUBLIC_API_BASE_URL stays empty
+ * (same-origin) and IS resolved at runtime by the browser, which is what makes
+ * the IP<->domain transition need no rebuild.
  */
-const API_PROXY_TARGET = (process.env.API_PROXY_TARGET || "http://127.0.0.1:8000").replace(/\/$/, "");
+const API_PROXY_TARGET = (process.env.API_PROXY_TARGET || "http://backend:8000").replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
