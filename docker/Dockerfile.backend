@@ -17,20 +17,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Compiler toolchain only for the wheels that have no linux/arm64 binary.
-# It is installed and purged in separate steps from `curl`: `--auto-remove`
-# drops packages that were pulled in automatically, and the HEALTHCHECK below
-# depends on curl, so curl is (re)installed explicitly *after* the purge.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Compiler toolchain, but ONLY where a pinned dependency has no prebuilt wheel.
+#
+# Every dependency in backend/requirements.txt ships a manylinux wheel for
+# amd64, so the toolchain is dead weight there: it drags in ~200 MB and forces
+# an `apt-get update` that reads a ~10 MB package index. On a host whose route
+# to the default Debian mirror is slow or flaky, that single step can stall the
+# whole build (observed on the target server: deb.debian.org crawled while the
+# regional mirror was ~9x faster). arm64 still gets the toolchain, which is the
+# only reason it existed.
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" != "amd64" ]; then \
+        apt-get update \
+        && apt-get install -y --no-install-recommends build-essential \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 COPY backend/requirements.txt ./backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt \
-    && apt-get purge -y --auto-remove build-essential \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # Non-root runtime user.
 RUN useradd --create-home --shell /usr/sbin/nologin appuser
@@ -52,7 +56,9 @@ ENV KB_DIR=/app/knowledge_base \
 
 EXPOSE 8000
 
+# Health probe uses the interpreter that is already in the image. The previous
+# curl-based probe was the only reason apt had to run on amd64 at all.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:8000/health || exit 1
+    CMD ["python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status == 200 else 1)"]
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
