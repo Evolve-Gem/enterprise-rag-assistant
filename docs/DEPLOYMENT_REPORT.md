@@ -2,18 +2,19 @@
 
 | | |
 | --- | --- |
-| **报告日期** | 2026-09-17（阶段 A 实测 2026-09-17） |
-| **阶段** | V3.0 Freeze → Package → Deploy → Verify → **Phase A Done** |
+| **报告日期** | 2026-09-17（阶段 A）· 2026-09-18（阶段 B 域名切换） |
+| **阶段** | V3.0 Freeze → Package → Deploy → Verify → **Phase A + Phase B Done** |
 | **冻结提交** | `74a51ce`（分支 `upgrade/v3-enterprise-copilot`，v3.0.0 冻结） |
 | **部署提交** | `ead406a`（分支 `upgrade/v3-enterprise-copilot`，v3.0.3 反代修复） |
 | **标签** | `v3.0.0`→`74a51ce`（annotated `41213ed`，已推送）· `v3.0.3`→`ead406a`（annotated `9c92a6b`，部署修复） |
 | **本地冻结状态** | ✅ 完成 |
 | **远端可获取状态** | ✅ `ls-remote` 三项 MATCH |
-| **公网部署状态** | ✅ **已执行（阶段 A）** |
-| **最终结论** | **PHASE A READY** ✅（域名/HTTPS 未切换，故非 READY FOR PUBLIC DEMO；见 §13.5） |
+| **公网部署状态** | ✅ **已执行（阶段 A + 阶段 B 域名切换）** |
+| **最终结论** | **READY FOR PUBLIC DEMO** ✅（`https://rag.changziqi.com` 已上线并全量验证；见 §14） |
 
-> 阶段 A 已实测完成：服务器部署 v3.0.3、backend+web healthy、同源反代修复生效、鉴权门/只读锁/真实数据/聊天冒烟/公网可达/重启恢复全部通过（见 §13）。
-> 仍待阶段 B（域名 `rag.changziqi.com` + HTTPS，Nginx 改一行 `proxy_pass` 至 3001）后才写 READY FOR PUBLIC DEMO。
+> 阶段 A（2026-09-17）：服务器部署 v3.0.3、backend+web healthy、同源反代修复生效、鉴权/只读/数据/冒烟/重启全部通过（§13）。
+> 阶段 B（2026-09-18）：`rag.changziqi.com` 由 8502（legacy）单行切换至 3001（V3），Nginx 备份可回滚，
+> HTTPS/证书/浏览器冒烟/API 鉴权/只读锁/重启恢复/legacy 保留全部实测通过（§14）。
 
 ---
 
@@ -417,7 +418,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | **`docker compose build`** | ✅ **已验证** | 服务器构建 web `fbc682e742dd`（1.26 GB）、backend `583da1057605`（471 MB） |
 | **镜像启动与 healthy** | ✅ **已验证** | backend/web 均 Up + healthy（§13.3） |
 | **公网 IP 访问** | ✅ **已验证** | `http://81.70.51.32:3001/health` → 200（安全组已放行 3001） |
-| **域名 / HTTPS** | ❌ **未执行** | 阶段 B：Nginx 改一行 `proxy_pass` 至 3001（未授权改动） |
+| **域名 / HTTPS** | ✅ **已验证** | 阶段 B：`https://rag.changziqi.com` 单行切换 8502→3001，`nginx -t` PASS 后 reload，证书有效至 2026-12-09（§14） |
 | **外网 Golden Demo 冒烟** | ✅ **已验证** | `POST /api/chat` → 200，546 字回答 + 3 引用（§13.4 #6） |
 | **容器重启后恢复** | ✅ **已验证** | `docker compose restart` 后 3 次轮询内 /health 恢复 200（§13.4 #8） |
 
@@ -447,7 +448,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | B1 | ~~git push 未执行~~ | 本机无交互凭据 | ✅ **已解除**：GCM 使用已缓存凭据推送成功，见 §7.0 |
 | B2 | ~~镜像未构建验证~~ | 本机无 Docker | ✅ **已解除**：服务器上 `docker compose build web`（v3.0.3，腾讯云 npm 镜像，`fbc682e742dd`）；backend 沿用 v3.0.2 构建 `583da1057605` |
 | B3 | ~~未部署 / 未公网验证~~ | 依赖 B2；且安全组需在腾讯云控制台放行 3001 | ✅ **已解除**：阶段 A 已部署并验证（§13）；安全组 3001 已放行 |
-| B4 | **Nginx 未改动** | 按「不破坏现有服务」原则，需你在阶段 A 通过后授权 | §7.3 单行改动 + 备份 + 回滚方案已备好 |
+| B4 | ~~Nginx 未改动~~ | 按「不破坏现有服务」原则，需你在阶段 A 通过后授权 | ✅ **已解除**：阶段 B 已执行——单行 `proxy_pass` 8502→3001，备份 `rag.changziqi.com.bak.20260918-102043`，回滚命令见 §14.5 |
 
 ### 11.2 需你决策
 
@@ -468,7 +469,10 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## 12. 最终结论
 
-# ✅ PHASE A READY（域名 / HTTPS 待阶段 B）
+# ✅ READY FOR PUBLIC DEMO（阶段 B 域名切换完成，2026-09-18）
+
+> 下方「理由 1–5」是**冻结阶段（尚未部署时）的原始判定**，保留作历史记录；
+> 其对应的每一项均已由阶段 A（§13）与阶段 B（§14）实测解除，报告不再自相矛盾。
 
 **理由（逐条对应本报告证据）**
 
@@ -494,13 +498,13 @@ sudo nginx -t && sudo systemctl reload nginx
 | --- | --- |
 | **READY FOR SERVER DEPLOY**（产物可直接上服务器构建） | ✅ **是** |
 | **PHASE A READY**（已部署 + 公网 IP 验证，同源反代修复生效） | ✅ **是** —— 实测见 §13 |
-| **READY FOR PUBLIC DEMO**（域名 `rag.changziqi.com` + HTTPS 已切换） | ❌ 否 —— 阶段 B 未执行（Nginx 改一行 `proxy_pass` 至 3001） |
+| **READY FOR PUBLIC DEMO**（域名 `rag.changziqi.com` + HTTPS 已切换） | ✅ **是** —— 实测见 §14（2026-09-18） |
 
 **阶段 A 已实测完成**（2026-09-17）：服务器部署 `v3.0.3`、backend+web 均 healthy、同源反代修复生效、
 鉴权门 / 只读锁 / 真实数据 / 聊天冒烟 / 公网可达 / 重启恢复全部通过（§13）；legacy V2 保持运行未受影响。
-**无需再改代码**：阶段 A 已闭环。剩余工作仅阶段 B 的执行动作 —— Nginx 改一行 `proxy_pass`，需你授权后执行。
-本地侧冻结在 `74a51ce`/`v3.0.0` 与部署修复 `ead406a`/`v3.0.3`，不需要新的代码变更。
-实测结果（镜像 ID、容器状态、公网 URL、health 输出、冒烟结果）已写入 §13。
+**阶段 B 已实测完成**（2026-09-18）：`rag.changziqi.com` 单行切换 8502→3001，HTTPS/证书/浏览器冒烟/API 鉴权/重启恢复全部通过（§14）。
+**无需再改代码**：两阶段均已闭环。本地侧冻结在 `74a51ce`/`v3.0.0` 与部署修复 `ead406a`/`v3.0.3`，不需要新的代码变更。
+实测结果（镜像 ID、容器状态、公网 URL、health 输出、冒烟结果）见 §13 与 §14。
 
 ---
 
@@ -560,9 +564,100 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ### 13.5 阶段 A 结论
 
-- **PHASE A READY** ✅
+- **PHASE A READY** ✅（历史记录；域名切换已于 2026-09-18 由阶段 B 完成，见 §14）
 - 服务器已成功部署 `v3.0.3`：backend + web 均 healthy，同源反代修复生效；鉴权门 / 只读锁 / 真实数据（24 文档 / 283 块）/
   聊天冒烟 / 公网可达 / 重启恢复全部通过；legacy V2 保持运行未受影响；约束（不改 Nginx、不停止 legacy、backend 仅绑 127.0.0.1、web 用 3001）全部满足。
-- **仍待阶段 B（不影响 PHASE A 结论）**：域名 `rag.changziqi.com` 切换 + HTTPS —— Nginx 将 `proxy_pass` 由 `:8502` 改至 `:3001`（单行改动 + 备份 + 回滚方案见 §7.3）。
-  故结论为 **PHASE A READY**，而非 **READY FOR PUBLIC DEMO**。
-- **未推送 GitHub**：本机 → GitHub 网络临时不可达，已用 git bundle 直送服务器；远端同步可后续补推（不影响部署与验证）。
+- ~~仍待阶段 B~~ → **已完成（§14）**：域名 `rag.changziqi.com` 切换 + HTTPS —— Nginx `proxy_pass` 由 `:8502` 改至 `:3001`（单行改动 + 备份 + 回滚方案见 §14.5）。
+- **未推送 GitHub**：已补推完成（分支 `aac616b`、tag `v3.0.3` 均与远端 MATCH）。
+
+---
+
+## 14. 阶段 B 执行实测：域名切换（2026-09-18）
+
+### 14.1 切换前复核（全只读，全部通过后才动手）
+
+| 检查项 | 实测 |
+| --- | --- |
+| V3 web `:3001` | `HTTP/1.1 200 OK`；`/health` → `{"status":"ok","version":"3.0.0","agent_engine":"langgraph","index_document_count":24,"index_chunk_count":283,...}` |
+| legacy V2 `:8502` | `HTTP/1.1 200 OK`（uvicorn） |
+| V3 backend `:18000` | 仅绑定 `127.0.0.1`（`ss -tlnp` 确认） |
+| 80 / 443 | nginx 监听正常 |
+| 现配置 | `sites-enabled/rag.changziqi.com` 第 6 行 `proxy_pass http://127.0.0.1:8502;`；443 ssl + Let's Encrypt 证书在位 |
+
+### 14.2 备份与最小修改
+
+- **备份文件**：`/etc/nginx/sites-available/rag.changziqi.com.bak.20260918-102043`（1146 B，与原文件逐字节一致）
+- **修改范围**：仅 `rag.changziqi.com` 一个文件的**一行**（`diff` 对备份验证，仅第 6 行变化）：
+
+```diff
+-        proxy_pass http://127.0.0.1:8502;
++        proxy_pass http://127.0.0.1:3001;
+```
+
+- 未触碰：其他域名、证书、`eat.changziqi.com`、`changziqi.com`、server block 数量、backend 端口、legacy 容器。
+
+### 14.3 `nginx -t` 与 reload
+
+```
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+→ sudo systemctl reload nginx（仅在此之后执行）
+```
+
+### 14.4 域名 HTTPS 验证（服务器侧 + 本机外网侧双向）
+
+| 检查项 | 实测 |
+| --- | --- |
+| `curl -I https://rag.changziqi.com` | **200**（nginx/1.18.0，含 `X-Content-Type-Options`/`Referrer-Policy` 安全头） |
+| `/health` 经域名（服务器侧 + 本机外网） | **200**，返回 V3 payload（24 docs / 283 chunks / langgraph / `llm_configured:true`） |
+| `/api/auth/status` 经域名 | **200**：`{"password_required":true,"read_only":true,...}` |
+| 证书 | `CN=rag.changziqi.com`，`notAfter=2026-12-09`（Let's Encrypt，未重签） |
+| HTTP→HTTPS | `301 Moved Permanently` |
+| 异常项 | 无 502 / 504 / mixed content / redirect loop / certificate error |
+
+### 14.5 Golden Smoke Test（域名 HTTPS）
+
+**API 层**（全部经 `https://rag.changziqi.com`，真实调用）：
+
+| # | 项 | 实测 |
+| --- | --- | --- |
+| 1 | 登录页 `GET /` | 200 |
+| 2 | 错误密码 | **401 `invalid_password`** |
+| 3 | 正确密码 | 200，token（64 位） |
+| 4 | Overview | 200：**24 documents / 283 chunks / hybrid** |
+| 5 | Ask「Rerank 在 RAG 检索链路里解决什么问题？」 | 200：答案 422 字，内容正确（Rerank=对已召回候选重排序，不解决召回问题），**3 引用** |
+| 6 | Citation Drawer 数据 | 200：`document_name=召回、Top K、Rerank 与 RAG 检索链路.md` + `section` 路径 + `snippet` + `score` |
+| 7 | Agent「分析知识库缺哪些售前资料」 | 200：`intent=kb_gap_analysis`，**8 节点**（understand→route_intent→plan→execute_tools→retrieve→generate→human_check→finalize，2 skipped） |
+| 8 | Solution Studio（generate） | 200：**8 章节**（Executive Summary…Next Steps）+ **4 引用** |
+| 9 | Knowledge Gaps（/api/insights/gaps） | 200 |
+| 10 | Evaluation | dataset 200（10 cases）/ runs 200 |
+| RO | 只读锁 `POST /api/knowledge/upload` | **403 `read_only`** |
+| SEC | 密钥泄漏 / traceback | `/api/settings`、`/api/overview` 均**无** `sk-` / `Traceback` |
+
+**真实浏览器层**（本机 Chromium + CDP，目标 `https://rag.changziqi.com`）：
+
+| 项 | 实测 |
+| --- | --- |
+| 密码门渲染 | ✅ `input[type=password]` 出现 |
+| 正确密码进入工作台 | ✅ 门消失、Overview 渲染 |
+| Overview 数据 | ✅ 页面文本含 **283** 与 **langgraph**（截图 `C:\agents\temp\phaseB_overview.png`） |
+| 路由遍历 `/ask` `/agent` `/solution-studio` `/insights/gaps` `/insights/evaluation` `/knowledge/documents` | **console error = 0，page exception = 0**（逐路由统计） |
+
+### 14.6 重启恢复（经域名）
+
+`docker compose restart` 后：`https://rag.changziqi.com/health` 第 **2** 次轮询恢复 **200**；
+Overview（24/283）、Ask（200，539 字 + 3 引用）、Agent（200，8 节点）复测全部正常。
+
+### 14.7 Legacy 保留与回滚路径
+
+| 项 | 状态 |
+| --- | --- |
+| legacy 容器 | `enterprise-rag-demo` **Up 3 weeks (healthy)**，`:8502 → 200`，未删除容器 / 镜像 / 端口 |
+| 回滚资产 | 备份 `/etc/nginx/sites-available/rag.changziqi.com.bak.20260918-102043` 存在（1146 B） |
+| 回滚命令 | `sudo cp /etc/nginx/sites-available/rag.changziqi.com.bak.20260918-102043 /etc/nginx/sites-available/rag.changziqi.com && sudo nginx -t && sudo systemctl reload nginx`（等效于把 `proxy_pass` 改回 `:8502`） |
+
+### 14.8 阶段 B 结论
+
+**READY FOR PUBLIC DEMO** ✅ —— `https://rag.changziqi.com` 已由 legacy V2 安全切换至 Enterprise RAG Copilot V3，
+HTTPS 正常、证书复用未重签、鉴权 / 只读 / 数据 / Ask / Citation / Agent / Solution / Gaps / Evaluation / 重启恢复全部实测通过，
+legacy 完整保留为即时回滚路径。
