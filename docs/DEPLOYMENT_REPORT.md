@@ -816,14 +816,25 @@ Overview `24 文档 / 283 块 / hybrid`、`/api/chat` 694 字 + 4 引用、`/api
 `POST /api/knowledge/upload` 空请求体返回 422（FastAPI 表单校验先于只读守卫），
 带真实文件时才是 403 `read_only` —— 两者都**不构成写入成功**。
 
-### 15.11 远端同步状态（如实标注）
+### 15.11 远端同步状态（已闭环）
 
 | 提交 | 内容 | 远端 |
 | --- | --- | --- |
 | `b2487ab` | feat(demo): open access mode with per-IP quota guard（tag `v3.0.4`） | ✅ 已推送 |
-| `8725620` | fix(docker): keep the path separator when rewriting the npm registry | ⚠️ 仅本地 |
-| `a74554f` | docs: record the public read-only demo and its quota guard | ⚠️ 仅本地 |
-| `72fbf9c` | docs(memory): record stage C open-access deployment | ⚠️ 仅本地 |
+| `8725620` | fix(docker): keep the path separator when rewriting the npm registry | ✅ 已推送 |
+| `a74554f` | docs: record the public read-only demo and its quota guard | ✅ 已推送 |
+| `72fbf9c` | docs(memory): record stage C open-access deployment | ✅ 已推送 |
+| `a77fb22` | docs(report): record post-delivery verification and the blocked push | ✅ 已推送 |
+
+**最终核对**：本地 `HEAD` 与远端分支引用**逐字节一致**，均为
+`a77fb223ab81b2d17090836015864b65b5ae1f26`；远端标签 `v3.0.0` / `v3.0.1` / `v3.0.2` /
+`v3.0.3` / `v3.0.4` 齐全。**未推送提交数 = 0**。
+
+> 同步过程记录：推送一度被本机到 `github.com:443` 的链路中断阻塞（取证见下），
+> 在链路恢复后由一次后台 `git push origin upgrade/v3-enterprise-copilot --tags` 完成
+> （`b2487ab..72fbf9c`），随后补齐 `a77fb22`。**以远端引用为准确认，不以本地 commit 成功为据。**
+
+#### 当时的受阻取证（保留作为排查参照）
 
 推送受阻于**本机到 `github.com:443` 的链路中断**，与代码无关。取证（同一台机器、同一时刻）：
 
@@ -837,30 +848,20 @@ Overview `24 文档 / 283 块 / hybrid`、`/api/chat` 694 字 + 4 引用、`/api
 
 即：**不是 GitHub 整体故障，也不是本机断网**，而是 `github.com` 这一 git 主机名被阻断；
 叠加本机在非交互 shell 下凭据助手（`credential.helper=helper-selector`）取不到 token
-（`git credential fill` 直接 `could not read Username`），因此**即使链路恢复，AI 侧也无法完成推送**。
+（`git credential fill` 直接 `could not read Username`）。
 
-**交付的绕过路径**：未推送的三个提交已打成 bundle，两端 md5 一致，可在网络恢复后按需使用。
+**当时的交付绕过路径（已完成使命，产物已清理）**：受阻期间离线打包的 bundle
+`^b2487ab → 72fbf9c`（11 579 B，md5 `cb8a9113319f8d1bd293bd5726407076`）曾同时落在
+本机与服务器两端并校验一致。链路恢复后直接用常规 `git push` 完成同步，bundle 未被启用，
+两端临时文件均已删除。
 
-| 位置 | 文件 | 大小 | md5 |
-| --- | --- | --- | --- |
-| 本机 | `C:\agents\temp\v304-push\v304-docs.bundle` | 11 579 B | `cb8a9113319f8d1bd293bd5726407076` |
-| 服务器 | `/home/ubuntu/v304-docs.bundle` | 11 579 B | `cb8a9113319f8d1bd293bd5726407076` |
+**排障要点（值得记住）**：`api.github.com` 200 而 `github.com` 超时，说明问题在 git 主机名
+而非 GitHub 本身；`ssh -T git@ssh.github.com -p 443` 返回 `Permission denied (publickey)`
+说明**通道是通的、缺的是凭据** —— 这两条合起来才能把「网络断了」和「没凭据」分开，
+避免用错误的方式绕过（改 `git://`、关 SSL 校验、把 token 写进 remote URL 都是把
+一次链路抖动换成长期凭据泄漏面）。
 
-| bundle 属性 | 值 |
-| --- | --- |
-| 内容 | `^b2487ab` → `72fbf9c`（即恰好三个未推送提交） |
-| 校验 | `git bundle verify` 通过，requires `b2487ab77701d147857288f6ef879adf7457f965` |
-
-**网络恢复后的补齐命令**：
-
-```bash
-cd /c/projects/enterprise-rag-assistant
-git push origin upgrade/v3-enterprise-copilot --tags
-git ls-remote origin refs/heads/upgrade/v3-enterprise-copilot   # 期望 72fbf9c
-```
-
-> ⚠️ **诚实标注**：这三个提交在写本报告时**尚未到达远端**，远端 HEAD 仍是 `b2487ab`。
-> 该状态**不影响任何已上线的功能** —— 线上跑的就是 `b2487ab` 构建出的镜像，
-> 三个未推送提交分别是 Dockerfile 修复与两份纯文档。
+**同步结论**：远端分支已推进到 `a77fb22`，与本地一致，**不存在任何未同步提交**。
+线上功能自始至终不依赖这几个提交（生产镜像由 `b2487ab` 构建，该提交在受阻期间就已推送成功）。
 
 
