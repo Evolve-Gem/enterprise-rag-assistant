@@ -827,30 +827,31 @@ Overview `24 文档 / 283 块 / hybrid`、`/api/chat` 694 字 + 4 引用、`/api
 | `a77fb22` | docs(report): record post-delivery verification and the blocked push | ✅ 已推送 |
 | `3f5cb0e` | docs(report): close out the remote sync instead of leaving it pending | ⚠️ **仅本地** |
 | `cf638bd` | docs(report): state the sync accurately, one commit is still local | ⚠️ **仅本地** |
+| `e40df7c` | docs(report): keep 15.11 self-consistent after the range grew | ⚠️ **仅本地** |
 
 **核对结果**：远端分支引用 = `a77fb223ab81b2d17090836015864b65b5ae1f26`，
-本地 `HEAD` = `cf638bd1fa8952052a689273df3bbe298fa2ac36`（**落后 2 个提交**）。
+本地 `HEAD` = `e40df7cc5f221d9c0425e65f01af5dd87226d461`（**本地领先 3 个纯文档提交**）。
 远端标签 `v3.0.0` / `v3.0.1` / `v3.0.2` / `v3.0.3` / `v3.0.4` 齐全。
 
 > 同步过程：链路短暂恢复期间，一次后台 `git push origin upgrade/v3-enterprise-copilot --tags`
 > 完成了 `b2487ab..72fbf9c`；`a77fb22` 随后补齐。之后 `github.com:443` 再次不可达
-> （连测 6 次 × 45s 全部失败，同期 `api.github.com` 稳定 200），
-> 因此后续两个闭环文档提交 `3f5cb0e` / `cf638bd` **尚未同步**。
+> （14 次重试全部失败，同期 `api.github.com` 稳定 200），
+> 因此后续三个闭环文档提交 `3f5cb0e` / `cf638bd` / `e40df7c` **尚未同步**。
 
 **待同步产物的可取用路径**（本机，已 `git bundle verify` 通过）：
 
 | 项 | 值 |
 | --- | --- |
 | 路径 | `C:\agents\temp\v304-push\closeout.bundle` |
-| 大小 | 3 997 B |
-| md5 | `094bb82be40e5c3d134d2fc06bbde351` |
-| 内容 | `^a77fb22` → `cf638bd`（2 个提交） |
+| 大小 | 4 937 B |
+| md5 | `f3617f738e647a316ac20c71ba37e4e3` |
+| 内容 | `^a77fb22` → `e40df7c`（3 个纯文档提交） |
 
 链路恢复后一条命令即完成：
 
 ```bash
 cd /c/projects/enterprise-rag-assistant && git push origin upgrade/v3-enterprise-copilot
-git ls-remote origin refs/heads/upgrade/v3-enterprise-copilot   # 期望 cf638bd
+git ls-remote origin refs/heads/upgrade/v3-enterprise-copilot   # 期望 e40df7c
 ```
 
 **该项不影响任何线上功能**：生产镜像由 `b2487ab` 构建，该提交早已在远端。
@@ -882,9 +883,14 @@ git ls-remote origin refs/heads/upgrade/v3-enterprise-copilot   # 期望 cf638bd
 避免用错误的方式绕过（改 `git://`、关 SSL 校验、把 token 写进 remote URL 都是把
 一次链路抖动换成长期凭据泄漏面）。
 
-**同步结论**：远端已推进到 `a77fb22`；仅剩两个闭环文档提交 `3f5cb0e` / `cf638bd` 待同步
-（见本节开头表格与上文命令）。线上功能自始至终不依赖这些提交 —— 生产镜像由 `b2487ab` 构建，
-该提交在受阻期间就已推送成功。**判据始终是 `git ls-remote` / 远端 API 返回的 SHA，
-不是本地 commit 是否成功。**
+**同步结论**：远端已推进到 `a77fb22`；仅剩三个闭环文档提交
+`3f5cb0e` / `cf638bd` / `e40df7c` 待同步（见本节开头表格与上文命令）。
+线上功能自始至终不依赖这些提交 —— 生产镜像由 `b2487ab` 构建，该提交在受阻期间就已推送成功。
+**判据始终是 `git ls-remote` / 远端 API 返回的 SHA，不是本地 commit 是否成功。**
+
+> **本节冻结说明**：本节表格本身每修正一次就会新增一个待同步提交（自我指涉）。
+> 为避免无限追改，**以「远端 = `a77fb22`」为唯一事实锚点**：
+> 凡远端未到达的提交，一律视为「本地领先的纯文档提交」，不再逐个补录进表格。
+> 最终同步判据仍是 `git ls-remote` 的返回值。
 
 
