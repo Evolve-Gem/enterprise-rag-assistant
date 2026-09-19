@@ -816,7 +816,7 @@ Overview `24 文档 / 283 块 / hybrid`、`/api/chat` 694 字 + 4 引用、`/api
 `POST /api/knowledge/upload` 空请求体返回 422（FastAPI 表单校验先于只读守卫），
 带真实文件时才是 403 `read_only` —— 两者都**不构成写入成功**。
 
-### 15.11 远端同步状态（已闭环）
+### 15.11 远端同步状态（一个提交待同步）
 
 | 提交 | 内容 | 远端 |
 | --- | --- | --- |
@@ -825,18 +825,38 @@ Overview `24 文档 / 283 块 / hybrid`、`/api/chat` 694 字 + 4 引用、`/api
 | `a74554f` | docs: record the public read-only demo and its quota guard | ✅ 已推送 |
 | `72fbf9c` | docs(memory): record stage C open-access deployment | ✅ 已推送 |
 | `a77fb22` | docs(report): record post-delivery verification and the blocked push | ✅ 已推送 |
+| `3f5cb0e` | docs(report): close out the remote sync instead of leaving it pending | ⚠️ **仅本地** |
 
-**最终核对**：本地 `HEAD` 与远端分支引用**逐字节一致**，均为
-`a77fb223ab81b2d17090836015864b65b5ae1f26`；远端标签 `v3.0.0` / `v3.0.1` / `v3.0.2` /
-`v3.0.3` / `v3.0.4` 齐全。**未推送提交数 = 0**。
+**核对结果**：远端分支引用 = `a77fb223ab81b2d17090836015864b65b5ae1f26`，
+本地 `HEAD` = `3f5cb0e37c2ca3b55caccb8ac081f6b32cb239f7`。远端标签
+`v3.0.0` / `v3.0.1` / `v3.0.2` / `v3.0.3` / `v3.0.4` 齐全。
 
-> 同步过程记录：推送一度被本机到 `github.com:443` 的链路中断阻塞（取证见下），
-> 在链路恢复后由一次后台 `git push origin upgrade/v3-enterprise-copilot --tags` 完成
-> （`b2487ab..72fbf9c`），随后补齐 `a77fb22`。**以远端引用为准确认，不以本地 commit 成功为据。**
+> 同步过程：链路短暂恢复期间，一次后台 `git push origin upgrade/v3-enterprise-copilot --tags`
+> 完成了 `b2487ab..72fbf9c`；`a77fb22` 随后补齐。之后 `github.com:443` 再次不可达
+> （连测 6 次 × 45s 全部失败，同期 `api.github.com` 稳定 200），
+> 因此本次闭环文档提交 `3f5cb0e` **尚未同步**。
 
-#### 当时的受阻取证（保留作为排查参照）
+**待同步产物的可取用路径**（本机，已 `git bundle verify` 通过）：
 
-推送受阻于**本机到 `github.com:443` 的链路中断**，与代码无关。取证（同一台机器、同一时刻）：
+| 项 | 值 |
+| --- | --- |
+| 路径 | `C:\agents\temp\v304-push\closeout.bundle` |
+| 大小 | 2 276 B |
+| md5 | `921101d5e64b104080a9e36914f8d057` |
+| 内容 | `^a77fb22` → `3f5cb0e`（单个提交） |
+
+链路恢复后一条命令即完成：
+
+```bash
+cd /c/projects/enterprise-rag-assistant && git push origin upgrade/v3-enterprise-copilot
+git ls-remote origin refs/heads/upgrade/v3-enterprise-copilot   # 期望 3f5cb0e
+```
+
+**该项不影响任何线上功能**：生产镜像由 `b2487ab` 构建，该提交早已在远端。
+
+#### 链路中断时的取证（保留作为排查参照）
+
+受阻于**本机到 `github.com:443` 的链路中断**，与代码无关。取证（同一台机器、同一时刻）：
 
 | 端点 | 结果 |
 | --- | --- |
@@ -850,7 +870,7 @@ Overview `24 文档 / 283 块 / hybrid`、`/api/chat` 694 字 + 4 引用、`/api
 叠加本机在非交互 shell 下凭据助手（`credential.helper=helper-selector`）取不到 token
 （`git credential fill` 直接 `could not read Username`）。
 
-**当时的交付绕过路径（已完成使命，产物已清理）**：受阻期间离线打包的 bundle
+**当时的交付绕过路径（已完成使命）**：受阻期间离线打包的 bundle
 `^b2487ab → 72fbf9c`（11 579 B，md5 `cb8a9113319f8d1bd293bd5726407076`）曾同时落在
 本机与服务器两端并校验一致。链路恢复后直接用常规 `git push` 完成同步，bundle 未被启用，
 两端临时文件均已删除。
@@ -861,7 +881,8 @@ Overview `24 文档 / 283 块 / hybrid`、`/api/chat` 694 字 + 4 引用、`/api
 避免用错误的方式绕过（改 `git://`、关 SSL 校验、把 token 写进 remote URL 都是把
 一次链路抖动换成长期凭据泄漏面）。
 
-**同步结论**：远端分支已推进到 `a77fb22`，与本地一致，**不存在任何未同步提交**。
-线上功能自始至终不依赖这几个提交（生产镜像由 `b2487ab` 构建，该提交在受阻期间就已推送成功）。
+**同步结论**：远端已推进到 `a77fb22`；仅剩闭环文档提交 `3f5cb0e` 待同步（见本节开头表格与
+上文命令）。线上功能自始至终不依赖这些提交 —— 生产镜像由 `b2487ab` 构建，该提交在受阻期间
+就已推送成功。**判据始终是 `git ls-remote` / 远端 API 返回的 SHA，不是本地 commit 是否成功。**
 
 
