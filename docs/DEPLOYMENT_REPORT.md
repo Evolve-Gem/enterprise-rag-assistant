@@ -2,19 +2,21 @@
 
 | | |
 | --- | --- |
-| **报告日期** | 2026-09-17（阶段 A）· 2026-09-18（阶段 B 域名切换） |
-| **阶段** | V3.0 Freeze → Package → Deploy → Verify → **Phase A + Phase B Done** |
+| **报告日期** | 2026-09-17（阶段 A）· 2026-09-18（阶段 B 域名切换）· 2026-09-19（阶段 C 公开演示） |
+| **阶段** | V3.0 Freeze → Package → Deploy → Verify → **Phase A + Phase B + Phase C Done** |
 | **冻结提交** | `74a51ce`（分支 `upgrade/v3-enterprise-copilot`，v3.0.0 冻结） |
-| **部署提交** | `ead406a`（分支 `upgrade/v3-enterprise-copilot`，v3.0.3 反代修复） |
-| **标签** | `v3.0.0`→`74a51ce`（annotated `41213ed`，已推送）· `v3.0.3`→`ead406a`（annotated `9c92a6b`，部署修复） |
+| **部署提交** | `8725620`（分支 `upgrade/v3-enterprise-copilot`，v3.0.4 公开演示 + 限流 + 镜像源修复） |
+| **标签** | `v3.0.0`→`74a51ce` · `v3.0.3`→`ead406a` · **`v3.0.4`→`b2487ab`**（公开演示开放访问） |
 | **本地冻结状态** | ✅ 完成 |
-| **远端可获取状态** | ✅ `ls-remote` 三项 MATCH |
-| **公网部署状态** | ✅ **已执行（阶段 A + 阶段 B 域名切换）** |
-| **最终结论** | **READY FOR PUBLIC DEMO** ✅（`https://rag.changziqi.com` 已上线并全量验证；见 §14） |
+| **远端可获取状态** | ✅ `ls-remote` MATCH |
+| **公网部署状态** | ✅ **已执行（阶段 A + B + C）** |
+| **最终结论** | **PUBLIC DEMO OPEN ACCESS: READY** ✅（`https://rag.changziqi.com` 公开只读演示，无需密码；见 §15） |
 
 > 阶段 A（2026-09-17）：服务器部署 v3.0.3、backend+web healthy、同源反代修复生效、鉴权/只读/数据/冒烟/重启全部通过（§13）。
 > 阶段 B（2026-09-18）：`rag.changziqi.com` 由 8502（legacy）单行切换至 3001（V3），Nginx 备份可回滚，
 > HTTPS/证书/浏览器冒烟/API 鉴权/只读锁/重启恢复/legacy 保留全部实测通过（§14）。
+> 阶段 C（2026-09-19）：关闭访问密码改为**公开只读演示**，新增 AI 端点 IP 限流（10 次/分钟），
+> 只读锁仍强制、认证代码未删除、Nginx 未改动；API 12/12 + 真实浏览器 9/9 通过（§15）。
 
 ---
 
@@ -469,10 +471,23 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## 12. 最终结论
 
-# ✅ READY FOR PUBLIC DEMO（阶段 B 域名切换完成，2026-09-18）
+# ✅ PUBLIC DEMO OPEN ACCESS: READY（公开只读演示，2026-09-19）
 
+> 本节的结论在阶段推进中更新过三次，每次都以**当轮实测证据**为准：
+> 冻结期 = NOT READY → 阶段 B 域名切换后 = READY FOR PUBLIC DEMO → 阶段 C 开放访问后 = PUBLIC DEMO OPEN ACCESS。
 > 下方「理由 1–5」是**冻结阶段（尚未部署时）的原始判定**，保留作历史记录；
-> 其对应的每一项均已由阶段 A（§13）与阶段 B（§14）实测解除，报告不再自相矛盾。
+> 其对应的每一项均已由阶段 A（§13）、阶段 B（§14）、阶段 C（§15）实测解除。
+
+**公开演示的最终形态**
+
+| 维度 | 状态 |
+| --- | --- |
+| 访问方式 | **无需密码**，任何人直接进入 `https://rag.changziqi.com` |
+| 写操作 | 全部关闭（upload / reindex / edit / delete / clear → 403 `read_only`），公开访客无法改动知识库 |
+| AI 端点 | 按 IP 限流 10 次/分钟，超限 429 + `rate_limit_exceeded`，保护 DeepSeek 额度 |
+| 浏览端点 | **不限流**，正常浏览体验不受影响 |
+| 恢复口令门禁 | 填回 `DEMO_PASSWORD` 即可，认证中间件与登录页从未删除 |
+
 
 **理由（逐条对应本报告证据）**
 
@@ -499,12 +514,15 @@ sudo nginx -t && sudo systemctl reload nginx
 | **READY FOR SERVER DEPLOY**（产物可直接上服务器构建） | ✅ **是** |
 | **PHASE A READY**（已部署 + 公网 IP 验证，同源反代修复生效） | ✅ **是** —— 实测见 §13 |
 | **READY FOR PUBLIC DEMO**（域名 `rag.changziqi.com` + HTTPS 已切换） | ✅ **是** —— 实测见 §14（2026-09-18） |
+| **PUBLIC DEMO OPEN ACCESS: READY**（无需密码的公开只读演示 + AI 端点限流） | ✅ **是** —— 实测见 §15（2026-09-19） |
 
 **阶段 A 已实测完成**（2026-09-17）：服务器部署 `v3.0.3`、backend+web 均 healthy、同源反代修复生效、
 鉴权门 / 只读锁 / 真实数据 / 聊天冒烟 / 公网可达 / 重启恢复全部通过（§13）；legacy V2 保持运行未受影响。
 **阶段 B 已实测完成**（2026-09-18）：`rag.changziqi.com` 单行切换 8502→3001，HTTPS/证书/浏览器冒烟/API 鉴权/重启恢复全部通过（§14）。
-**无需再改代码**：两阶段均已闭环。本地侧冻结在 `74a51ce`/`v3.0.0` 与部署修复 `ead406a`/`v3.0.3`，不需要新的代码变更。
-实测结果（镜像 ID、容器状态、公网 URL、health 输出、冒烟结果）见 §13 与 §14。
+**阶段 C 已实测完成**（2026-09-19）：取消访问密码改为公开只读演示，AI 端点加 IP 限流（10/分钟），
+只读锁仍强制、认证代码保留、Nginx 未改动；API 12/12 + 真实浏览器 9/9 通过（§15）。
+**无需再改代码**：三阶段均已闭环。本地侧当前为 `8725620`/`v3.0.4`（最新）与 `ead406a`/`v3.0.3`、`74a51ce`/`v3.0.0`。
+实测结果（镜像 ID、容器状态、公网 URL、health 输出、冒烟结果）见 §13、§14 与 §15。
 
 ---
 
@@ -661,3 +679,119 @@ Overview（24/283）、Ask（200，539 字 + 3 引用）、Agent（200，8 节�
 **READY FOR PUBLIC DEMO** ✅ —— `https://rag.changziqi.com` 已由 legacy V2 安全切换至 Enterprise RAG Copilot V3，
 HTTPS 正常、证书复用未重签、鉴权 / 只读 / 数据 / Ask / Citation / Agent / Solution / Gaps / Evaluation / 重启恢复全部实测通过，
 legacy 完整保留为即时回滚路径。
+
+---
+
+## 15. 阶段 C 执行实测：公开演示开放访问 + AI 额度保护（2026-09-19）
+
+### 15.1 变更目标
+
+取消公网访问密码，让任何人直接进入体验；同时给会花钱的 AI 端点加额度保护，
+避免一个访客把 DeepSeek 额度耗尽。**不删除任何认证代码**，口令门禁随时可经一行环境变量恢复。
+
+### 15.2 代码变更（已提交 `b2487ab`，tag `v3.0.4`）
+
+| 文件 | 变更 |
+| --- | --- |
+| `backend/app/core/ratelimit.py` | **新增**：进程内滑动窗口 limiter + 客户端键推导 + 端点范围匹配 |
+| `backend/app/core/config.py` | 新增 `rate_limit_enabled` / `rate_limit_requests` / `rate_limit_window_seconds`；`public_view()` 暴露限流配置 |
+| `backend/app/core/errors.py` | 新增 `RateLimitError`（429 / `rate_limit_exceeded`） |
+| `backend/app/main.py` | 新增 `_demo_rate_limit` 中间件；启动日志打印 `rate_limit=` |
+| `backend/tests/test_api.py` | 新增 12 个用例 |
+| `.env.example` / `.env.production.example` | 更新为「公开只读演示」语义 + 限流开关 |
+| `docker/Dockerfile.web` | **修 bug**：`NPM_REGISTRY` 重写丢失路径分隔符（见 15.5） |
+
+### 15.3 无密码模式验证
+
+`require_auth` 在 `settings.demo_password` 为空时直接 return，中间件门的 `needs_token` 亦为 `False`，
+前端 `app-shell.tsx` 依 `/api/auth/status` 的 `password_required=false` 跳过登录页 —— 三项**均已存在**，
+本次未新增旁路、未删中间件。
+
+| 验证项 | 结果 |
+| --- | --- |
+| `GET /api/auth/status` | `password_required=false` `read_only=true` ✅ |
+| 15 个读取端点（无 `X-Demo-Token`） | 全部 **200** ✅ |
+| 真实浏览器 | **无密码输入框、无「进入工作台」按钮**，直接进入工作台 ✅ |
+
+### 15.4 只读模式仍然强制
+
+| 写操作 | 结果 |
+| --- | --- |
+| `POST /api/knowledge/upload` | **403** `read_only` ✅ |
+| `POST /api/knowledge/reindex` | **403** `read_only` ✅ |
+| `DELETE /api/activity` | **400** `clear_not_allowed` ✅ |
+
+### 15.5 限流（仅高成本端点）
+
+范围：`/api/chat`、`/api/rag/query`、`/api/agent/run`、`/api/solutions/{analyze,generate,export}`。
+**浏览类端点不限流**：`/health`、`/api/overview`、知识库浏览、`/api/rag/retrieve`、`/api/agent/catalog` 等。
+
+公网实测（`curl`，经 `https://rag.changziqi.com`）：
+
+```
+HTTP/1.1 429 Too Many Requests
+x-ratelimit-limit: 10
+x-ratelimit-remaining: 0
+x-ratelimit-window: 60
+retry-after: 55
+
+{"error":{"code":"rate_limit_exceeded",
+          "message":"请求过于频繁：每个访客每分钟最多 10 次 AI 请求，请 55 秒后重试。",
+          "details":{"limit":10,"window_seconds":60,"retry_after_seconds":55}}}
+```
+
+| 验证项 | 结果 |
+| --- | --- |
+| 前 10 次请求 | 全部放行（第 10 次后额度归零） |
+| 第 11 次请求 | **429** + `rate_limit_exceeded` + `Retry-After` ✅ |
+| 等待 62s 后 | 恢复放行（窗口滑动正确） ✅ |
+| 20 次浏览类请求 | **0 个 429**（未被误伤） ✅ |
+| 单测覆盖 | 12 个新用例全绿；离线 mock，**未消耗真实 LLM 额度** |
+
+### 15.6 公网验收（域名 HTTPS）
+
+**API 层 12/12 通过**：auth status、15 条读取路由免 token、upload/reindex/clear 全部被拒、
+Overview `24 文档 / 283 块 / hybrid`、`/api/chat` 694 字 + 4 引用、`/api/rag/query` 3 引用、
+`/api/agent/run` 8 节点、`/api/solutions/analyze` 200、`/api/settings` 无 `sk-`/`Traceback` 泄漏、
+浏览端点 0 限流。
+
+**真实浏览器 9/9 通过**（CDP 驱动 Chromium，1440×900）：
+
+| 步骤 | 结果 |
+| --- | --- |
+| HTTPS 可达 | title=`Enterprise RAG Copilot` ✅ |
+| 无登录页 | `password_input=false` `login_button=false` ✅ |
+| 工作台渲染 | 1750 字符正文 ✅ |
+| Overview 真实数据 | 24 / 283 / hybrid 全部命中 ✅ |
+| auth status | `password_required=false` `read_only=true` ✅ |
+| Ask 带引用 | **2626 字符、引用标记最高 `#14`、4 秒返回** ✅ |
+| 10 个路由 | 全部渲染，**console error = 0** ✅ |
+| 公开访客上传 | 403 `read_only` ✅ |
+| 截图 | `overview-no-login.png` ✅ |
+
+### 15.7 部署与回滚
+
+| 项 | 状态 |
+| --- | --- |
+| `.env` 备份 | `/opt/enterprise-rag-copilot/repo/.env.bak.20260919-120955`（5084 B，mode 600） |
+| 生效配置 | `password=False read_only=True rate_limit=10/60s`（启动日志实测） |
+| 镜像 | `rag-copilot-backend:3.0.0`、`rag-copilot-web:3.0.0` 均已重建 |
+| 容器 | backend + web 均 `--force-recreate` 后 **healthy** |
+| Nginx | **未改动**（本次变更不涉及） |
+| 恢复口令门禁 | 把 `DEMO_PASSWORD` 填成强随机串 → `docker compose up -d --force-recreate backend web` |
+
+### 15.8 修掉的一个既有 bug（非本次引入）
+
+`docker/Dockerfile.web` 的 `NPM_REGISTRY` 替换**从未真正可用**：
+`sed` 模式 `https://registry.npmjs.org/` 吃掉了尾部斜杠，而替换串没补回来，
+于是包路径直接粘到主机名上 → `https://registry.npmmirror.comzwitch/...`，
+`npm ci` 报 `getaddrinfo ENOTFOUND registry.npmmirror.comzwitch`。
+
+**实测影响很大**：本机到 `pypi.org` 约 18 KB/s、镜像站 4.4 MB/s；
+`npm` 上游 146 KB/s、镜像 49 MB/s。修复后 backend 镜像构建从**卡死 20 分钟以上**降到 **21 秒**。
+已提交 `8725620`。
+
+### 15.9 阶段 C 结论
+
+**PUBLIC DEMO OPEN ACCESS: READY** ✅
+

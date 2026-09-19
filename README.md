@@ -19,7 +19,7 @@
 | **执行引擎** | LangGraph 1.2 与内置状态机双引擎，共用同一套节点函数 |
 | **可观测性** | 每个节点记录耗时/输入/输出；SQLite 活动台账；Dashboard 真实指标 |
 | **评测** | Hit@K / MRR / Recall@K / 关键词覆盖（确定性计算）+ 人工答案评分 |
-| **规模** | 后端约 50 个模块 · 161 个 pytest 用例 · 前端 10 个页面 |
+| **规模** | 后端约 50 个模块 · 171 个 pytest 用例 · 前端 10 个页面 |
 | **实测指标** | 检索 Hit@4 = 90%，MRR = 0.800（10 条冻结评测集，真实知识库） |
 | **验收状态** | ✅ **READY FOR DEMO** —— 见 [`docs/V3_ACCEPTANCE_REPORT.md`](docs/V3_ACCEPTANCE_REPORT.md) |
 
@@ -259,12 +259,13 @@ graph LR
 | **文档解析** | Markdown / 文本 / PDF（pypdf）/ Word（python-docx） | ✅ DONE |
 | **引用溯源** | 编号上下文 → 角标 → 抽屉 → 原文 + 分数；越界编号自动剔除 | ✅ DONE |
 | **Prompt 版本化** | `prompts/v1/*.md` 运行时加载，Settings 页可见占位符 | ✅ DONE |
-| **安全** | 演示密码（HMAC 令牌）、只读模式、文件名安全化、路径穿越防护、密钥打码 | ✅ DONE |
-| **访问控制** | `DEMO_PASSWORD` 由中间件统一拦截**全部 `/api` 读取与写入**，仅 `/health`、`/api/auth/*` 公开 | ✅ DONE |
+| **安全** | 演示密码（HMAC 令牌，可开关）、只读模式、IP 限流、文件名安全化、路径穿越防护、密钥打码 | ✅ DONE |
+| **访问控制** | 两种受支持模式：**公开只读演示**（`DEMO_PASSWORD` 留空，任何人可访问）或**口令门禁**（设置后由中间件统一拦截全部 `/api` 读取与写入，仅 `/health`、`/api/auth/*` 公开）。代码路径相同，切换只需改一个环境变量 | ✅ DONE |
+| **AI 额度保护** | 公开演示下对高成本端点按 IP 限流（默认 10 次/分钟，超限 429 + `rate_limit_exceeded`）；浏览类端点（overview / 知识库 / `retrieve`）**不限流** | ✅ DONE |
 | **响应式** | 1440 / 1280 / 1080 三档零横向溢出；明暗双主题各页零 console 错误 | ✅ DONE |
 | **移动端** | 390px 下部分页面存在横向溢出（判据见验收报告） | ⚠️ PARTIAL |
 | **Docker** | backend + web + 可选 pgvector / legacy profile | ✅ DONE |
-| **测试** | 161 个 pytest 用例 + tsc 0 错误 + ESLint 0 警告 + 生产构建通过 | ✅ DONE |
+| **测试** | 171 个 pytest 用例 + tsc 0 错误 + ESLint 0 警告 + 生产构建通过 | ✅ DONE |
 | **pgvector** | `PgVectorStore` 已实现（raw SQL + HNSW），**本机无 PostgreSQL，未做集成验证** | ⚠️ PARTIAL |
 | **LLM 重排序** | `RERANK_PROVIDER=llm` 已实现并有启发式兜底，默认关闭以控制成本 | ⚠️ PARTIAL |
 | **对话记忆** | 历史仅用于消解指代，尚未做查询改写与长期记忆 | ⚠️ PARTIAL |
@@ -364,8 +365,11 @@ npm run build                              # 生产构建
 | `AGENT_ENGINE` | `auto` | `auto` / `langgraph` / `native` |
 | `VECTOR_STORE` | `numpy` | `numpy` / `pgvector`（需 `DATABASE_URL`） |
 | `PROMPT_VERSION` | `v1` | 对应 `prompts/<version>/` |
-| `DEMO_PASSWORD` | 空 | 设置后启用访问口令（生产 Demo 必须设置） |
-| `DEMO_READ_ONLY` | `false` | `true` 关闭全部写操作（生产 Demo 必须为 `true`） |
+| `DEMO_PASSWORD` | 空 | **留空 = 公开演示**，任何人可直接进入（前端自动跳过登录页）。填强随机串即恢复口令门禁，认证代码无需改动 |
+| `DEMO_READ_ONLY` | `false` | `true` 关闭全部写操作（生产 Demo 必须为 `true`）。公开演示下这是唯一的内容保护 |
+| `RATE_LIMIT_ENABLED` | `false` | `true` 对高成本 AI 端点按 IP 限流（公开演示应开启；本地与测试保持 `false`） |
+| `RATE_LIMIT_REQUESTS` | `10` | 每个客户端在窗口内的最大请求数 |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | 限流窗口长度（秒） |
 | `API_PROXY_TARGET` | `http://127.0.0.1:8000` | web 反代后端的地址（**运行期**读取，改它不必重建镜像） |
 | `BACKEND_HOST_PORT` | `18000` | backend 宿主端口，仅绑 `127.0.0.1` |
 | `WEB_HOST_PORT` | `3001` | web 宿主端口，唯一对公网开放 |
@@ -430,7 +434,7 @@ enterprise-rag-assistant/
 │   │   ├── services/             # 8 个服务（知识/RAG/Agent/方案/洞察/评测/台账/设置）
 │   │   ├── rag/                  # 索引 · 切分 · BM25 · 向量 · 检索 · 重排 · 引用 · Prompt
 │   │   └── agents/               # state · router · graph · skills · tools
-│   ├── tests/                    # 161 个 pytest 用例
+│   ├── tests/                    # 171 个 pytest 用例
 │   └── data/                     # 运行时数据（索引缓存 / 台账 / 评测集，已 gitignore）
 ├── knowledge_base/               # 知识资产（24 篇，可自由替换）
 ├── prompts/v1/                   # 版本化 Prompt 模板（运行时加载）
