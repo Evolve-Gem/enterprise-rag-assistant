@@ -795,3 +795,72 @@ Overview `24 文档 / 283 块 / hybrid`、`/api/chat` 694 字 + 4 引用、`/api
 
 **PUBLIC DEMO OPEN ACCESS: READY** ✅
 
+---
+
+### 15.10 交付后的收尾实测（复核，2026-09-19 14:47）
+
+阶段 C 完成后做了一次**只读复核**，确认线上状态没有回退：
+
+| 检查项 | 实测结果 | 判定 |
+| --- | --- | --- |
+| 公网 `/health` | `status=ok` · `version=3.0.0` · `environment=production` · `index_ready=true` · 24 文档 / 283 chunks · `llm_configured=true` | ✅ |
+| `/api/auth/status`（无 token） | `password_required=false` · `read_only=true` | ✅ |
+| `/api/overview`（无 token） | 24 文档 / 24 已索引 / 283 chunks / 58 524 字符 / `index_state=ready` / agent 运行 6 次全部成功 | ✅ |
+| `/api/knowledge/documents`（无 token） | HTTP **200** | ✅ |
+| `POST /api/knowledge/upload`（真实文件） | HTTP **403** · `{"error":{"code":"read_only","message":"当前为只读演示模式，写操作已被禁用。","details":{}}}` | ✅ |
+| 容器 | `enterprise-rag-copilot-backend-1` Up 2 hours (healthy) · `enterprise-rag-copilot-web-1` Up 2 hours (healthy) | ✅ |
+| legacy V2 | `enterprise-rag-demo` Up 4 weeks (healthy)，8502 正常 | ✅ |
+| Nginx | `nginx -t` 成功；站点符号链接 mtime 仍为 **Sep 10 17:15**（本阶段未触碰） | ✅ |
+
+对照 §15.6，公开演示开放访问的形态在收尾复核中**完全保持**。唯一与 §15.6 不同的是
+`POST /api/knowledge/upload` 空请求体返回 422（FastAPI 表单校验先于只读守卫），
+带真实文件时才是 403 `read_only` —— 两者都**不构成写入成功**。
+
+### 15.11 远端同步状态（如实标注）
+
+| 提交 | 内容 | 远端 |
+| --- | --- | --- |
+| `b2487ab` | feat(demo): open access mode with per-IP quota guard（tag `v3.0.4`） | ✅ 已推送 |
+| `8725620` | fix(docker): keep the path separator when rewriting the npm registry | ⚠️ 仅本地 |
+| `a74554f` | docs: record the public read-only demo and its quota guard | ⚠️ 仅本地 |
+| `72fbf9c` | docs(memory): record stage C open-access deployment | ⚠️ 仅本地 |
+
+推送受阻于**本机到 `github.com:443` 的链路中断**，与代码无关。取证（同一台机器、同一时刻）：
+
+| 端点 | 结果 |
+| --- | --- |
+| `https://github.com/` | 连接超时（15s / 21s 无响应；`--resolve` 到 140.82.112.3 / 140.82.113.3 同样超时） |
+| `https://api.github.com/` | **200**（0.39s） |
+| `https://codeload.github.com/` | **301**（0.59s） |
+| `ssh -T git@ssh.github.com -p 443` | 通，返回 `Permission denied (publickey)`（是缺凭据，不是不通） |
+| `https://rag.changziqi.com/health` | **200**（0.17s，生产完好） |
+
+即：**不是 GitHub 整体故障，也不是本机断网**，而是 `github.com` 这一 git 主机名被阻断；
+叠加本机在非交互 shell 下凭据助手（`credential.helper=helper-selector`）取不到 token
+（`git credential fill` 直接 `could not read Username`），因此**即使链路恢复，AI 侧也无法完成推送**。
+
+**交付的绕过路径**：未推送的三个提交已打成 bundle，两端 md5 一致，可在网络恢复后按需使用。
+
+| 位置 | 文件 | 大小 | md5 |
+| --- | --- | --- | --- |
+| 本机 | `C:\agents\temp\v304-push\v304-docs.bundle` | 11 579 B | `cb8a9113319f8d1bd293bd5726407076` |
+| 服务器 | `/home/ubuntu/v304-docs.bundle` | 11 579 B | `cb8a9113319f8d1bd293bd5726407076` |
+
+| bundle 属性 | 值 |
+| --- | --- |
+| 内容 | `^b2487ab` → `72fbf9c`（即恰好三个未推送提交） |
+| 校验 | `git bundle verify` 通过，requires `b2487ab77701d147857288f6ef879adf7457f965` |
+
+**网络恢复后的补齐命令**：
+
+```bash
+cd /c/projects/enterprise-rag-assistant
+git push origin upgrade/v3-enterprise-copilot --tags
+git ls-remote origin refs/heads/upgrade/v3-enterprise-copilot   # 期望 72fbf9c
+```
+
+> ⚠️ **诚实标注**：这三个提交在写本报告时**尚未到达远端**，远端 HEAD 仍是 `b2487ab`。
+> 该状态**不影响任何已上线的功能** —— 线上跑的就是 `b2487ab` 构建出的镜像，
+> 三个未推送提交分别是 Dockerfile 修复与两份纯文档。
+
+

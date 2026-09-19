@@ -51,6 +51,22 @@ Docker 29.1.3 + Compose 2.40.3；Nginx 1.18；UFW inactive（边界是**腾讯�
 
 **本机能力边界**：**无 Docker**（无 Desktop / 无 WSL 发行版 / 无 podman）→ 不能本地构建或运行镜像；
 **无 GitHub 凭据**（非交互 shell 无法提示输入）→ **不能 push**，push 必须用户本人执行。
+（2026-09-19 补充取证：`ssh -T git@ssh.github.com:443` 能通并返回 `Permission denied (publickey)`；
+`cmdkey` 里只有 `git:https://github.com` 的条目，`git credential fill` 在非交互 shell 里
+`helper-selector` 直接抛异常 → 鉴权头出不去。**这是两个独立障碍，别混为一谈**。）
+
+## 生产环境（2026-09-19 阶段 C 结束后）
+
+**V3 已上线公开只读演示**：`https://rag.changziqi.com`（无需密码，写操作 403，AI 端点 10 次/分钟/IP）。
+
+| 项 | 值 |
+| --- | --- |
+| 部署提交 | `b2487ab`（tag `v3.0.4`）——**唯一已推送到远端的阶段 C 提交** |
+| 部署目录 | `/opt/enterprise-rag-copilot/repo` + `/opt/enterprise-rag-copilot/.env` |
+| `.env` 备份 | `/opt/enterprise-rag-copilot/.env.bak.20260919-120955`（5084 B，mode 600） |
+| 生效配置 | `password=False read_only=True rate_limit=10/60s`，索引 24 文档 / 283 chunks |
+| 镜像加速 | `.env` 里 `PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple`、`NPM_REGISTRY=https://registry.npmmirror.com`（**没有它们构建会卡死 20+ 分钟**） |
+| 恢复口令门禁 | `.env` 填回强随机 `DEMO_PASSWORD` → `docker compose up -d --force-recreate backend web`（认证代码从未删除） |
 
 ## 本机环境坑位
 
@@ -77,6 +93,12 @@ Docker 29.1.3 + Compose 2.40.3；Nginx 1.18；UFW inactive（边界是**腾讯�
 - **后台命令可能被执行不止一次**：会产生重复产物（如重复上传 probe 文件），
   排查「数据莫名多一条」时先怀疑这一点。
 - **PowerShell 工具不回显 stdout**：需要把输出重定向到文件再 Read。
+- **`git bundle create` 写不了 `/tmp`**（Windows Git Bash 的 `/tmp` 不存在）→ 用 `C:/agents/temp/...`。
+  跨机传 bundle：`cat x.bundle | ssh host 'cat > ~/x.bundle'`，两端 `md5sum` 对上才算送达。
+- **本机到 `github.com:443` 可能被阻断，但 `api.github.com` / `codeload.github.com` /
+  `ssh.github.com:443` 仍通**。遇到 `Failed to connect to github.com:443` 时先做这个四点对照，
+  才能区分「GitHub 挂了」「本机网络挂了」和「只有 git 主机名被墙」三种完全不同的事。
+  **不要**为了绕过而改用 `git://`、关 SSL 校验、或把 token 写进 remote URL —— 网络抖动不该换长期凭据泄漏面。
 
 ## 前端工程坑位（Tailwind）
 
@@ -112,7 +134,7 @@ Node 22 内置 `WebSocket` 与 `fetch` → 可以**零安装**用 CDP 驱动真�
 
 ```bash
 # 后端（全离线，用临时 KB 与临时 data 目录）
-cd backend && ../.venv/Scripts/python.exe -m pytest -q      # 159 passed
+cd backend && ../.venv/Scripts/python.exe -m pytest -q      # 171 passed
 
 # 前端
 cd apps/web
