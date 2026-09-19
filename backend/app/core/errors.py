@@ -73,6 +73,14 @@ class ReadOnlyError(AppError):
     message = "当前为只读演示模式，写操作已被禁用。"
 
 
+class RateLimitError(AppError):
+    """Too many AI requests from one client inside the demo quota window."""
+
+    code = "rate_limit_exceeded"
+    status_code = 429
+    message = "请求过于频繁，请稍后再试。"
+
+
 class UnsupportedFileError(AppError):
     code = "unsupported_file"
     status_code = 415

@@ -113,6 +113,15 @@ class Settings:
     demo_password: str = ""
     demo_read_only: bool = False
 
+    # -- public demo quota guard --------------------------------------------
+    # The AI endpoints spend a real token budget, so the password-free demo
+    # throttles them per client.  Left off by default: a local run or the test
+    # suite must never be rate limited, and an operator opting into the public
+    # demo turns it on explicitly.
+    rate_limit_enabled: bool = False
+    rate_limit_requests: int = 10
+    rate_limit_window_seconds: int = 60
+
     # -- storage ------------------------------------------------------------
     kb_dir: Path = DEFAULT_KB_DIR
     prompts_dir: Path = DEFAULT_PROMPTS_DIR
@@ -257,6 +266,12 @@ class Settings:
             "guard_rails": {
                 "password_required": bool(self.demo_password),
                 "read_only": self.demo_read_only,
+                "rate_limit": {
+                    "enabled": self.rate_limit_enabled,
+                    "requests": self.rate_limit_requests,
+                    "window_seconds": self.rate_limit_window_seconds,
+                    "scope": "ai_endpoints",
+                },
             },
             "storage": {
                 "knowledge_base": str(self.kb_dir),
@@ -329,6 +344,9 @@ def _build_settings() -> Settings:
         api_prefix=_env("API_PREFIX", "/api"),
         demo_password=_env("DEMO_PASSWORD"),
         demo_read_only=_env_bool("DEMO_READ_ONLY", False),
+        rate_limit_enabled=_env_bool("RATE_LIMIT_ENABLED", False),
+        rate_limit_requests=_env_int("RATE_LIMIT_REQUESTS", 10),
+        rate_limit_window_seconds=_env_int("RATE_LIMIT_WINDOW_SECONDS", 60),
         kb_dir=_env_path("KB_DIR", DEFAULT_KB_DIR),
         prompts_dir=_env_path("PROMPTS_DIR", DEFAULT_PROMPTS_DIR),
         prompt_version=_env("PROMPT_VERSION", "v1"),

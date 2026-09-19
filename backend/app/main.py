@@ -68,9 +68,14 @@ async def lifespan(application: FastAPI):
     )
     logger.info("  agent engine   : %s", resolve_agent_engine(settings.agent_engine))
     logger.info(
-        "  guard rails    : password=%s read_only=%s",
+        "  guard rails    : password=%s read_only=%s rate_limit=%s",
         bool(settings.demo_password),
         settings.demo_read_only,
+        (
+            f"{settings.rate_limit_requests}/{settings.rate_limit_window_seconds}s"
+            if settings.rate_limit_enabled
+            else "off"
+        ),
     )
 
     started = time.perf_counter()
@@ -162,6 +167,81 @@ def create_app() -> FastAPI:
                     },
                 )
         return await call_next(request)
+
+    @application.middleware("http")
+    async def _demo_rate_limit(request: Request, call_next):
+        """Throttle the token-spending AI endpoints of the public demo.
+
+        Only the expensive surface is metered -- browsing the demo stays
+        unthrottled: ``/health``, the overview, the knowledge explorer, the
+        agent catalogue and ``/api/rag/retrieve`` all answer freely.
+
+        Ordering note (verified, not assumed)
+        -------------------------------------
+        Starlette **prepends** every ``@app.middleware("http")`` to the stack, so
+        the *last* one declared ends up outermost.  The real chain for this app
+        is::
+
+            _timing_middleware → _demo_rate_limit → _demo_password_gate → route
+
+        which means this limiter runs *outside* the password gate.  Left alone,
+        that would let an anonymous caller burn the quota of the very client it
+        was impersonating -- a cheap denial-of-service against one IP.  So the
+        gate's own decision is replayed here: a request that is about to be
+        rejected with 401 costs nothing.
+        """
+        settings = get_settings()
+        if not settings.rate_limit_enabled:
+            return await call_next(request)
+
+        from .api.deps import verify_demo_token
+        from .core.ratelimit import client_key, get_limiter, is_rate_limited_path
+
+        path = request.url.path
+        if not is_rate_limited_path(path):
+            return await call_next(request)
+
+        # Requests the password gate is about to refuse are not billed.
+        if bool(settings.demo_password) and path not in _PUBLIC_PATHS:
+            token = (
+                request.headers.get("X-Demo-Token")
+                or request.query_params.get("demo_token")
+                or ""
+            )
+            if not verify_demo_token(token, settings):
+                return await call_next(request)
+
+        decision = get_limiter(settings).check(client_key(request))
+        if not decision.allowed:
+            logger.warning(
+                "Rate limit exceeded: %s %s (client=%s)",
+                request.method,
+                request.url.path,
+                client_key(request),
+            )
+            return JSONResponse(
+                status_code=429,
+                headers=decision.headers(),
+                content={
+                    "error": {
+                        "code": "rate_limit_exceeded",
+                        "message": (
+                            f"请求过于频繁：每个访客每分钟最多 "
+                            f"{decision.limit} 次 AI 请求，请 {decision.retry_after} 秒后重试。"
+                        ),
+                        "details": {
+                            "limit": decision.limit,
+                            "window_seconds": decision.window_seconds,
+                            "retry_after_seconds": decision.retry_after,
+                        },
+                    }
+                },
+            )
+
+        response = await call_next(request)
+        for name, value in decision.headers().items():
+            response.headers[name] = value
+        return response
 
     @application.middleware("http")
     async def _timing_middleware(request: Request, call_next):

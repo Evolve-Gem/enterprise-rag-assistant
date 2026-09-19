@@ -7,6 +7,7 @@ import io
 import pytest
 
 from app.core.config import get_settings, reload_settings
+from app.core.ratelimit import reset_limiter
 from app.rag.splitter import make_document_id
 
 
@@ -145,6 +146,279 @@ def test_password_gate_protects_every_read_endpoint(monkeypatch, sandbox):
         for method, path in protected:
             allowed = guarded.request(method, path, headers=headers)
             assert allowed.status_code == 200, f"{path} rejected a valid token ({allowed.status_code})"
+
+
+def test_open_demo_needs_no_token_on_any_route(monkeypatch, sandbox):
+    """The public demo ships with ``DEMO_PASSWORD`` empty on purpose.
+
+    Emptiness must be an explicit, supported mode -- not an accident that only
+    happens to work -- so this test walks the *same* route table the password
+    test does and asserts each one answers without ``X-Demo-Token``.
+    """
+    monkeypatch.setenv("DEMO_PASSWORD", "")
+    reload_settings()
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    open_routes = [
+        ("GET", "/api/knowledge/documents"),
+        ("GET", "/api/knowledge/stats"),
+        ("GET", "/api/overview"),
+        ("GET", "/api/settings"),
+        ("GET", "/api/insights/coverage"),
+        ("GET", "/api/evaluation/dataset"),
+        ("GET", "/api/activity"),
+        ("GET", "/api/agent/catalog"),
+        ("GET", "/api/solutions/config"),
+        ("GET", "/api/rag/retrieve?q=Rerank&top_k=3"),
+    ]
+
+    with TestClient(create_app()) as demo:
+        status = demo.get("/api/auth/status").json()
+        assert status["password_required"] is False
+        assert status["read_only"] is False
+
+        for method, path in open_routes:
+            response = demo.request(method, path)
+            assert response.status_code == 200, f"{path} still gated ({response.status_code})"
+
+
+def test_open_demo_read_only_still_blocks_every_write(monkeypatch, sandbox):
+    """No password must not mean no guard rails: writes stay refused."""
+    monkeypatch.setenv("DEMO_PASSWORD", "")
+    monkeypatch.setenv("DEMO_READ_ONLY", "true")
+    reload_settings()
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    with TestClient(create_app()) as demo:
+        assert demo.get("/api/auth/status").json()["read_only"] is True
+
+        upload = demo.post(
+            "/api/knowledge/upload",
+            files={"file": ("a.md", io.BytesIO(b"# a\n\ncontent\n"), "text/markdown")},
+        )
+        assert upload.status_code == 403
+        assert upload.json()["error"]["code"] == "read_only"
+
+        assert demo.post("/api/knowledge/reindex").status_code == 403
+
+        # Clearing the activity ledger has its own guard with its own code
+        # (``clear_not_allowed``, 400) -- asserted explicitly so a future
+        # refactor cannot quietly widen it.
+        cleared = demo.delete("/api/activity")
+        assert cleared.status_code == 400
+        assert cleared.json()["error"]["code"] == "clear_not_allowed"
+
+        # ... while reads remain wide open.
+        assert demo.get("/api/knowledge/documents").status_code == 200
+
+
+# ---------------------------------------------------------- rate limiting
+
+
+def test_rate_limit_is_off_by_default(client):
+    """A local run or the test suite must never be throttled."""
+    assert client.get("/api/settings").json()["guard_rails"]["rate_limit"]["enabled"] is False
+
+    # Hammering a metered endpoint stays unthrottled when the guard is off.
+    for _ in range(12):
+        assert client.get("/api/rag/retrieve?q=Rerank&top_k=3").status_code == 200
+
+
+def test_rate_limit_allows_then_blocks_with_429(monkeypatch, sandbox):
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "true")
+    monkeypatch.setenv("RATE_LIMIT_REQUESTS", "3")
+    monkeypatch.setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
+    reload_settings()
+    reset_limiter()
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    with TestClient(create_app()) as demo:
+        # Each request needs a *real* unit of work, but the token spend is what
+        # matters -- so the LLM stays unconfigured and the sandbox answers the
+        # request cheaply. Only the limiter's arithmetic is under test.
+        for index in range(3):
+            allowed = demo.post("/api/rag/query", json={"question": "Rerank 是什么"})
+            assert allowed.status_code == 200, f"request {index + 1} should pass"
+            assert allowed.headers["X-RateLimit-Remaining"] == str(2 - index)
+
+        blocked = demo.post("/api/rag/query", json={"question": "Rerank 是什么"})
+        assert blocked.status_code == 429
+        payload = blocked.json()
+        assert payload["error"]["code"] == "rate_limit_exceeded"
+        assert payload["error"]["details"]["limit"] == 3
+        assert payload["error"]["details"]["window_seconds"] == 60
+        assert int(blocked.headers["Retry-After"]) >= 1
+        assert blocked.headers["X-RateLimit-Remaining"] == "0"
+
+
+def test_rate_limit_does_not_touch_browsing_endpoints(monkeypatch, sandbox):
+    """The demo must never feel throttled while someone is just reading it."""
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "true")
+    monkeypatch.setenv("RATE_LIMIT_REQUESTS", "2")
+    monkeypatch.setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
+    reload_settings()
+    reset_limiter()
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    unmetered = [
+        "/health",
+        "/api/overview",
+        "/api/knowledge/documents",
+        "/api/knowledge/stats",
+        "/api/agent/catalog",
+        "/api/agent/tools",
+        "/api/agent/skills",
+        "/api/solutions/config",
+        "/api/insights/coverage",
+        "/api/insights/gaps",
+        "/api/evaluation/dataset",
+        "/api/activity",
+        "/api/settings",
+        "/api/rag/retrieve?q=Rerank&top_k=3",
+    ]
+
+    with TestClient(create_app()) as demo:
+        for _ in range(4):
+            for path in unmetered:
+                response = demo.get(path)
+                assert response.status_code == 200, f"{path} got throttled ({response.status_code})"
+
+
+def test_rate_limit_is_per_client(monkeypatch, sandbox):
+    """One noisy visitor must not lock everyone else out."""
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "true")
+    monkeypatch.setenv("RATE_LIMIT_REQUESTS", "1")
+    monkeypatch.setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
+    reload_settings()
+    reset_limiter()
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    noisy = {"X-Forwarded-For": "203.0.113.7"}
+    quiet = {"X-Forwarded-For": "198.51.100.9"}
+
+    with TestClient(create_app()) as demo:
+        assert demo.post("/api/chat", json={"question": "hi"}, headers=noisy).status_code == 200
+        assert demo.post("/api/chat", json={"question": "hi"}, headers=noisy).status_code == 429
+
+        # A different visitor is untouched by the first one's exhaustion.
+        assert demo.post("/api/chat", json={"question": "hi"}, headers=quiet).status_code == 200
+
+
+def test_rate_limit_skips_rejected_requests(monkeypatch, sandbox):
+    """A 401 from the password gate must not burn quota.
+
+    The limiter is declared *inside* the auth gate for exactly this reason; if
+    it were declared first, an unauthenticated scanner could exhaust the quota
+    of the very client it was impersonating.
+    """
+    monkeypatch.setenv("DEMO_PASSWORD", "s3cret")
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "true")
+    monkeypatch.setenv("RATE_LIMIT_REQUESTS", "2")
+    reload_settings()
+    reset_limiter()
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    with TestClient(create_app()) as demo:
+        for _ in range(5):
+            assert demo.post("/api/chat", json={"question": "hi"}).status_code == 401
+
+        token = demo.post("/api/auth/login", json={"password": "s3cret"}).json()["token"]
+        headers = {"X-Demo-Token": token}
+
+        # Full quota still available: the 401s cost nothing.
+        assert demo.post("/api/chat", json={"question": "hi"}, headers=headers).status_code == 200
+        assert demo.post("/api/chat", json={"question": "hi"}, headers=headers).status_code == 200
+        assert demo.post("/api/chat", json={"question": "hi"}, headers=headers).status_code == 429
+
+
+def test_sliding_window_limiter_unit():
+    """The limiter itself, without the HTTP stack in the way."""
+    from app.core.ratelimit import SlidingWindowLimiter
+
+    limiter = SlidingWindowLimiter(limit=2, window_seconds=60)
+
+    assert limiter.check("client", now=1000.0).allowed is True
+    assert limiter.check("client", now=1000.5).allowed is True
+
+    denied = limiter.check("client", now=1001.0)
+    assert denied.allowed is False
+    assert denied.retry_after == 60
+
+    # Sliding, not fixed: the first hit ages out 60s after *it* happened.
+    assert limiter.check("client", now=1060.1).allowed is True
+
+    # Independent clients never share a bucket.
+    assert limiter.check("other", now=1060.1).allowed is True
+
+    # Stale entries are pruned, so memory is bounded by the window.
+    limiter.reset()
+    assert limiter.tracked_clients() == 0
+
+
+def test_rate_limit_path_matcher_covers_only_expensive_endpoints():
+    """Regression: a prefix rule used to meter ``/api/solutions/config``.
+
+    ``/api/solutions/config`` is a plain GET that feeds the Solution Studio
+    form.  Matching it with a ``/api/solutions/`` prefix throttled a read-only
+    page, which is exactly the "demo feels broken" failure the scope rule was
+    meant to avoid.
+    """
+    from app.core.ratelimit import is_rate_limited_path
+
+    metered = [
+        "/api/chat",
+        "/api/rag/query",
+        "/api/agent/run",
+        "/api/solutions/analyze",
+        "/api/solutions/generate",
+        "/api/solutions/export",
+        "/api/chat/",  # trailing slash must not slip through
+    ]
+    unmetered = [
+        "/api/solutions/config",
+        "/api/agent/catalog",
+        "/api/agent/tools",
+        "/api/agent/skills",
+        "/api/rag/retrieve",
+        "/api/knowledge/documents",
+        "/api/overview",
+        "/health",
+        "/",
+    ]
+
+    for path in metered:
+        assert is_rate_limited_path(path) is True, f"{path} should be metered"
+    for path in unmetered:
+        assert is_rate_limited_path(path) is False, f"{path} should be unmetered"
+
+
+def test_sliding_window_limiter_evicts_under_a_key_flood():
+    """A spoofed-IP flood must not grow the client dict without limit."""
+    from app.core.ratelimit import SlidingWindowLimiter
+
+    limiter = SlidingWindowLimiter(limit=1, window_seconds=60, max_clients=16)
+    for index in range(500):
+        limiter.check(f"10.0.0.{index}", now=1000.0 + index)
+
+    assert limiter.tracked_clients() <= 16
 
 
 # ----------------------------------------------------------------- overview
