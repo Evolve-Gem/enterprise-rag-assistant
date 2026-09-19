@@ -25,9 +25,18 @@ WORKDIR /app
 # dependency tree, so the difference is minutes versus far too long.
 ARG NPM_REGISTRY=
 COPY apps/web/package.json apps/web/package-lock.json* ./
+# Rewrite the resolved registry in the lockfile, keeping the path separator.
+#
+# The trailing slash matters: the pattern swallows it, so the replacement must
+# put it back. Without it, "https://registry.npmjs.org/zwitch/-/zwitch-2.0.4.tgz"
+# becomes "https://registry.npmmirror.comzwitch/-/zwitch-2.0.4.tgz" and npm
+# fails with ENOTFOUND on the host "registry.npmmirror.comzwitch". The value is
+# normalised first so an operator may write the mirror with or without a
+# trailing slash.
 RUN if [ -n "$NPM_REGISTRY" ]; then \
-      echo "npm registry override: $NPM_REGISTRY"; \
-      sed -i "s#https://registry.npmjs.org/#${NPM_REGISTRY}#g" package-lock.json; \
+      MIRROR="${NPM_REGISTRY%/}/"; \
+      echo "npm registry override: $MIRROR"; \
+      sed -i "s#https://registry.npmjs.org/#${MIRROR}#g" package-lock.json; \
     fi; \
     npm ci --no-audit --no-fund
 
