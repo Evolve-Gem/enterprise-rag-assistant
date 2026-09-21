@@ -19,7 +19,7 @@
 | **执行引擎** | LangGraph 1.2 与内置状态机双引擎，共用同一套节点函数 |
 | **可观测性** | 每个节点记录耗时/输入/输出；SQLite 活动台账；Dashboard 真实指标 |
 | **评测** | Hit@K / MRR / Recall@K / 关键词覆盖（确定性计算）+ 人工答案评分 |
-| **规模** | 后端约 50 个模块 · 171 个 pytest 用例 · 前端 10 个页面 |
+| **规模** | 后端 61 个 Python 模块 · 171 个 pytest 用例 · 前端 10 个页面 |
 | **实测指标** | 检索 Hit@4 = 90%，MRR = 0.800（10 条冻结评测集，真实知识库） |
 | **验收状态** | ✅ **READY FOR DEMO** —— 见 [`docs/V3_ACCEPTANCE_REPORT.md`](docs/V3_ACCEPTANCE_REPORT.md) |
 
@@ -286,7 +286,7 @@ graph LR
 | 检索 | 自研 BM25 · NumPy 向量索引 · RRF 融合 · IDF 加权重排 | 无重量级依赖，全部可解释 |
 | 文档解析 | pypdf · python-docx | |
 | 存储 | SQLite（活动台账）· NPZ（索引缓存）· JSON（评测集） | 零外部依赖即可运行 |
-| 测试 | pytest 9 · httpx · FastAPI TestClient | 161 用例，全程不联网 |
+| 测试 | pytest 9 · httpx · FastAPI TestClient | 171 用例，全程不联网 |
 | 部署 | Docker Compose | backend / web / 可选 pgvector / 可选 legacy |
 
 ---
@@ -340,7 +340,7 @@ FastAPI 端口绑定在 `127.0.0.1`，且构建产物中不会残留任何绝对
 
 ```bash
 cd backend
-../.venv/Scripts/python -m pytest -q      # 161 passed
+../.venv/Scripts/python -m pytest -q      # 171 passed
 
 cd ../apps/web
 npm run typecheck                          # tsc 0 错误
@@ -449,7 +449,7 @@ enterprise-rag-assistant/
 
 ## 14. Roadmap
 
-**已完成（V3.0）**：前后端分离 · 混合检索 · 重排序 · 引用溯源 · Agent/Skill/Tool 三层 · 双引擎 · Trace · 方案生成 · 缺口分析 · 评测中心 · 活动台账 · Prompt 版本化 · Docker · 161 个测试 · 本地验收（49/49 安全项、40 次真实页面渲染）。
+**已完成（V3.0）**：前后端分离 · 混合检索 · 重排序 · 引用溯源 · Agent/Skill/Tool 三层 · 双引擎 · Trace · 方案生成 · 缺口分析 · 评测中心 · 活动台账 · Prompt 版本化 · Docker · 171 个测试 · 本地验收（49/49 安全项、40 次真实页面渲染）。
 
 **下一步**：
 

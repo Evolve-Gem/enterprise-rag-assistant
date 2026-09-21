@@ -16,7 +16,7 @@
 > 再往上是 Agent 层：Agent 负责意图和计划，7 个 Skill 组织业务能力，10 个 Tool 执行具体动作，
 > 每一步的耗时和输入输出都会渲染成时间线。同时提供了检索评测，当前 Hit@4 是 90%、MRR 0.8。
 >
-> 后端有 159 个测试用例，前端类型检查零错误、lint 零警告、生产构建通过。
+> 后端有 171 个测试用例，前端类型检查零错误、lint 零警告、生产构建通过。
 
 ---
 
@@ -97,7 +97,7 @@ Tool 不知道自己在为哪个 Skill 服务，Skill 不知道图是怎么调�
 重排序用更贵的信号（词法交叉特征，或模型打分）对候选重新打分，把真正相关的顶上来。
 本项目实测：`RERANK_PROVIDER=off` 时"定义 Rerank 的那个 chunk"排第 3，开 `heuristic` 后稳定进前 2。
 
-**为什么要 ID 加权**：这一个坑值得单独讲（见上文 1 分钟版第 2 点）。
+**为什么要 IDF 加权**：这一个坑值得单独讲（见上文 1 分钟版第 2 点）。
 
 ### Q7 chunk 怎么切？
 
@@ -193,6 +193,6 @@ Tool 不知道自己在为哪个 Skill 服务，Skill 不知道图是怎么调�
 
 直接说边界，然后说你怎么验证。例如：
 
-> 「`PgVectorStore` 我实现了完整的建表、HNSW 索引和余弦检索 SQL，但本机没有 PostgreSQL 实例，所以**只在单测里覆盖了 SQL 构造，没有做集成验证**。要上线我会先用 `docker compose --profile pg up` 起一个 pgvector，跑一遍现有的 159 个测试，再补一个「同一语料在 numpy 与 pgvector 下 top-k 一致」的对照用例。」
+> 「`PgVectorStore` 我实现了完整的建表、HNSW 索引和余弦检索 SQL，但本机没有 PostgreSQL 实例，所以**只在单测里覆盖了 SQL 构造，没有做集成验证**。要上线我会先用 `docker compose --profile pg up` 起一个 pgvector，跑一遍现有的 171 个测试，再补一个「同一语料在 numpy 与 pgvector 下 top-k 一致」的对照用例。」
 
 比「我做过 pgvector」安全得多，而且显得更专业。

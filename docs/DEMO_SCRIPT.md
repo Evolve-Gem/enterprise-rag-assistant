@@ -200,5 +200,5 @@ Rerank 在 RAG 检索链路里解决什么问题？
 | 「换向量库要改多少代码？」 | Settings 页 → 检索与生成 → 展示 `vector_store` 是配置项 |
 | 「Prompt 在哪？」 | Settings 页 → Prompt 模板与版本 → 6 个模板 + 占位符 |
 | 「密钥怎么管的？」 | Settings 页 → 模型服务 → `已配置 ****6789` |
-| 「有没有测试？」 | 终端跑 `pytest -q` → 159 passed |
+| 「有没有测试？」 | 终端跑 `pytest -q` → 171 passed |
 | 「旧的 Streamlit 还在吗？」 | `streamlit run legacy/app.py` → 现场对比信息密度 |

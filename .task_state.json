@@ -1,0 +1,44 @@
+{
+  "task_id": "fanruan-fde-portfolio-2027",
+  "task_name": "帆软 FDE 解决方案工程师｜企业知识库 RAG/Agent 项目作品集",
+  "status": "RUNNING",
+  "phase": "Phase 1 完成 — 等待用户确认进入 Phase 2",
+  "acceptance_criteria": [
+    "Phase 1: 输出项目事实审计（已实现/部分实现/规划未实现/可展示证据/缺失资产 五部分）",
+    "Phase 1: 输出作品集信息架构（P1-P10 页面结构 + 视觉规范 + FDE 匹配映射）",
+    "Phase 1: 标注任务书摘要与真实实现的事实分歧",
+    "Phase 2: 页面文案定稿（每页标题/正文/图示建议）",
+    "Phase 3: 视觉素材补齐（缺失截图/架构图导出/二维码/录屏）",
+    "Phase 4: 生成 PDF 或可导出 PDF 的正式文档",
+    "Phase 5: 交付 10 项最终交付物（作品集内容/每页文案/缺失清单/演示路径/60秒/3分钟/300-500字/100字/10问/PDF）"
+  ],
+  "completed_steps": [
+    "读取工作区规范 C:\\agents\\README.md",
+    "读取项目 README / INTERVIEW_GUIDE / DEMO_SCRIPT / resume_enterprise_rag_update",
+    "实测后端测试：171 passed in 18.62s",
+    "实测索引缓存：24 documents / 283 chunks / schema v3 / chunk 500-100",
+    "核对 Skill 7 项 / Tool 10 项 / 缺口分类 11 类 / 前端 10 页面 / 后端 61 模块 11395 行",
+    "实测线上 Demo：https://rag.changziqi.com health + auth status 正常（2026-09-21）",
+    "实测生产服务器：backend+web healthy 2 days、证书 2026-12-09 到期、nginx 5 站点",
+    "修正 README/INTERVIEW_GUIDE/DEMO_SCRIPT 中过期的测试数（161/159 → 171）、IDF 错别字、模块数 50 → 61",
+    "产出 docs/portfolio/01_FACT_AUDIT.md",
+    "产出 docs/portfolio/02_INFORMATION_ARCHITECTURE.md",
+    "归档副本到 C:\\agents\\output\\fanruan-fde-portfolio\\（md5 一致）"
+  ],
+  "current_step": "Phase 1 交付完成，等待用户确认 3 项前置条件",
+  "remaining_steps": [
+    "等用户确认：页数（10 或 8）、版式（A4 横向/16:9）、GitHub 仓库可见性",
+    "Phase 2: 逐页文案定稿",
+    "Phase 3: 补齐 P0 图形资产（架构图/Workflow 图/拓扑图/二维码）",
+    "Phase 4: 生成 PDF",
+    "Phase 5: 输出 10 项最终交付物"
+  ],
+  "errors": [],
+  "artifacts": [
+    "docs/portfolio/01_FACT_AUDIT.md",
+    "docs/portfolio/02_INFORMATION_ARCHITECTURE.md",
+    "C:\\agents\\output\\fanruan-fde-portfolio\\01_FACT_AUDIT.md",
+    "C:\\agents\\output\\fanruan-fde-portfolio\\02_INFORMATION_ARCHITECTURE.md"
+  ],
+  "updated_at": "2026-09-21T15:20:00+08:00"
+}
