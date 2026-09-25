@@ -131,6 +131,32 @@ export function useLocalStorage<T>(key: string, initial: T) {
   return [value, setValue, hydrated] as const;
 }
 
+/**
+ * Apply a one-shot preset from the URL query string.
+ *
+ * The home page's "3 分钟体验" cards link to `/ask?q=…`, `/agent?task=…` and
+ * `/solution-studio?requirement=…`. The value only ever *prefills* the form —
+ * the visitor still presses the button, so no AI call is spent on their behalf.
+ *
+ * Implemented against `window.location` rather than `useSearchParams()` on
+ * purpose: `useSearchParams()` forces every caller into a `<Suspense>` boundary
+ * (or deopts the whole route to client-side rendering), and these pages are
+ * statically prerendered.
+ */
+export function usePresetParam(name: string, apply: (value: string) => void) {
+  const consumed = useRef(false);
+  const applyRef = useRef(apply);
+  applyRef.current = apply;
+
+  useEffect(() => {
+    if (consumed.current) return;
+    consumed.current = true;
+    const raw = new URLSearchParams(window.location.search).get(name);
+    // Runs once per mount on purpose: a later refresh must not clobber typing.
+    if (raw && raw.trim()) applyRef.current(raw);
+  }, [name]);
+}
+
 /** Copy text to the clipboard and report success for ~1.4s. */
 export function useCopyToClipboard() {
   const [copied, setCopied] = useState(false);

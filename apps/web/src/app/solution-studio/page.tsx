@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, Lightbulb, Sparkles, Wand2 } from "lucide-react";
+import { CheckCircle2, Download, FileText, Lightbulb, Sparkles, Wand2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { KnowledgeMascot } from "@/components/mascot/knowledge-mascot";
@@ -10,11 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, DefRow, SectionLabel } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { PageIntro, StepNote } from "@/components/ui/page-intro";
 import { EmptyState, InlineError, InlineWarning } from "@/components/ui/states";
 import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/providers/toast-provider";
 import { api, ApiError } from "@/lib/api";
-import { useAsync } from "@/lib/hooks";
+import { useAsync, usePresetParam } from "@/lib/hooks";
 import type { RequirementForm, SolutionResponse } from "@/lib/types";
 import { formatMs, formatPercent } from "@/lib/utils";
 
@@ -42,6 +43,16 @@ const EXAMPLE = {
 
 type Tab = "sections" | "analysis" | "evidence";
 
+/** Stated up front so the form is not a leap of faith. */
+const EXPECTED = [
+  "需求分析",
+  "推荐方案",
+  "实施路径",
+  "风险说明",
+  "参考依据",
+  "可导出 Markdown / Word",
+];
+
 export default function SolutionStudioPage() {
   const { toast } = useToast();
   const config = useAsync(() => api.solutionConfig(), []);
@@ -53,6 +64,9 @@ export default function SolutionStudioPage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("sections");
   const [exporting, setExporting] = useState<"markdown" | "docx" | null>(null);
+
+  // `/solution-studio?requirement=…` from the home page: prefill only.
+  usePresetParam("requirement", setRequirement);
 
   const updateForm = (key: keyof RequirementForm, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -117,7 +131,14 @@ export default function SolutionStudioPage() {
   const analysis = result?.analysis;
 
   return (
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+    <div className="space-y-5">
+      <PageIntro
+        title="方案生成"
+        subtitle="输入客户需求，AI 会理解需求、检索相关企业知识，并生成带来源依据的结构化售前方案。"
+        aside={<Badge tone="neutral">需求 → 检索 → 8 章节方案</Badge>}
+      />
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
       {/* ----------------------------------------------------- intake form */}
       <div className="space-y-4">
         <Card>
@@ -135,17 +156,25 @@ export default function SolutionStudioPage() {
               onChange={(event) => setRequirement(event.target.value)}
             />
 
-            <button
-              type="button"
-              onClick={() => {
-                setRequirement(EXAMPLE.requirement);
-                setForm(EXAMPLE.form);
-              }}
-              className="flex items-center gap-1.5 text-2xs text-[var(--color-accent)] transition-colors hover:underline"
-            >
-              <Lightbulb className="size-3" />
-              填入示例客户需求（职业院校知识库）
-            </button>
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-sunken)] px-3 py-2.5">
+              <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
+                快速体验示例
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setRequirement(EXAMPLE.requirement);
+                  setForm(EXAMPLE.form);
+                }}
+                className="mt-1.5 inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-accent-line)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-accent-ink)] transition-colors hover:bg-[var(--color-accent-soft)]"
+              >
+                <Lightbulb className="size-3.5" />
+                职业院校知识库
+              </button>
+              <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--color-ink-faint)]">
+                点击后自动填入预设需求，不会自动生成。
+              </p>
+            </div>
 
             <div className="grid grid-cols-1 gap-3 border-t border-[var(--color-line-faint)] pt-3 sm:grid-cols-2">
               <Field label="客户名称">
@@ -200,6 +229,23 @@ export default function SolutionStudioPage() {
               />
             </Field>
 
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2.5">
+              <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
+                你将得到
+              </p>
+              <ul className="mt-1.5 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                {EXPECTED.map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-1.5 text-2xs text-[var(--color-ink-soft)]"
+                  >
+                    <CheckCircle2 className="size-3 shrink-0 text-[var(--color-success)]" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
             <Button
               variant="primary"
               className="w-full"
@@ -249,7 +295,7 @@ export default function SolutionStudioPage() {
           <EmptyState
             icon={<FileText className="size-5" />}
             title="还没有生成方案"
-            description="填写左侧客户需求（或直接点「填入示例客户需求」），然后点击「生成售前方案」。生成的方案包含 Executive Summary 到 Next Steps 共 8 个章节，并在正文标注引用来源。"
+            description="填写左侧客户需求，或直接点「职业院校知识库」快速填入示例，然后点击「生成售前方案」。生成的方案包含 8 个标准章节，并在正文标注引用来源。"
           />
         ) : null}
 
@@ -312,6 +358,22 @@ export default function SolutionStudioPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <StepNote
+              label="本次方案生成过程"
+              steps={["理解需求", "提取检索问题", "检索企业知识", "组织方案", "添加引用"]}
+              detail={
+                <p className="text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+                  方案共 <b className="font-mono">{result.sections.length}</b> 个章节，其中{" "}
+                  <b className="font-mono">
+                    {result.sections.filter((section) => section.grounded).length}
+                  </b>{" "}
+                  个章节带引用依据；使用{" "}
+                  <b className="font-mono">{result.retrieved_chunks.length}</b> 段知识库证据，
+                  正文引用 <b className="font-mono">{result.citations.length}</b> 处。
+                </p>
+              }
+            />
 
             {result.warnings.length > 0 ? (
               <div className="space-y-2">
@@ -435,6 +497,7 @@ export default function SolutionStudioPage() {
             </Card>
           </>
         ) : null}
+      </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  ArrowRight,
   ArrowUpRight,
   BookOpen,
   Boxes,
@@ -9,8 +10,10 @@ import {
   Cpu,
   Database,
   FileStack,
+  FileText,
   Gauge,
   MessageSquareText,
+  Search,
   ShieldCheck,
   Sparkles,
   Workflow,
@@ -26,122 +29,423 @@ import { EmptyState, ErrorState, SkeletonGrid } from "@/components/ui/states";
 import { api } from "@/lib/api";
 import { useAsync } from "@/lib/hooks";
 import type { OverviewResponse } from "@/lib/types";
-import { ACTIVITY_KIND_LABELS, formatCount, formatMs, formatPercent, formatRelative, vizColor } from "@/lib/utils";
+import {
+  ACTIVITY_KIND_LABELS,
+  formatCount,
+  formatMs,
+  formatPercent,
+  formatRelative,
+  vizColor,
+} from "@/lib/utils";
 
-const ACTION_ICONS: Record<string, typeof MessageSquareText> = {
-  ask: MessageSquareText,
-  upload: FileStack,
-  solution: Sparkles,
-  agent: Workflow,
-  gaps: Boxes,
-};
+/* ------------------------------------------------------------------ content */
 
-export default function OverviewPage() {
+/** The three things a first-time visitor can actually accomplish. */
+const PRIMARY_ACTIONS = [
+  {
+    href: "/ask",
+    english: "Ask",
+    icon: MessageSquareText,
+    title: "知识问答",
+    description: "向企业知识库提问，AI 会先检索资料，再基于真实证据回答。",
+    cta: "开始提问",
+  },
+  {
+    href: "/agent",
+    english: "Agent Workspace",
+    icon: Workflow,
+    title: "AI 任务",
+    description: "告诉 Agent 你想完成什么，它会自动识别任务并调用对应能力。",
+    cta: "运行 Agent",
+  },
+  {
+    href: "/solution-studio",
+    english: "Solution Studio",
+    icon: FileText,
+    title: "方案生成",
+    description: "输入客户需求，自动形成结构化、可溯源的售前方案。",
+    cta: "生成方案",
+  },
+];
+
+const ASK_EXAMPLE = "Rerank 在 RAG 检索链路里解决什么问题？";
+const AGENT_EXAMPLE = "帮我分析当前知识库还缺少哪些售前资料。";
+const SOLUTION_EXAMPLE =
+  "某职业院校希望把招生政策、教务规定和学生事务答疑统一到一个知识库，希望减少重复人工解答，预算有限，计划先小范围试点。";
+
+/** Three independent entry points — deliberately not a chained tutorial. */
+const QUICK_START = [
+  {
+    step: "Step 1",
+    title: "问一个企业知识问题",
+    example: ASK_EXAMPLE,
+    flow: ["检索企业知识", "筛选证据", "生成回答", "标注来源"],
+    cta: "体验知识问答",
+    href: `/ask?q=${encodeURIComponent(ASK_EXAMPLE)}`,
+  },
+  {
+    step: "Step 2",
+    title: "让 Agent 完成一个任务",
+    example: AGENT_EXAMPLE,
+    flow: ["任务理解", "意图识别", "选择能力", "调用工具", "执行结果"],
+    cta: "体验 AI Agent",
+    href: `/agent?task=${encodeURIComponent(AGENT_EXAMPLE)}`,
+  },
+  {
+    step: "Step 3",
+    title: "生成一份售前方案",
+    example: SOLUTION_EXAMPLE,
+    flow: ["需求解析", "检索企业知识", "组织章节", "标注引用"],
+    cta: "体验方案生成",
+    href: `/solution-studio?requirement=${encodeURIComponent(SOLUTION_EXAMPLE)}`,
+  },
+];
+
+const CAPABILITIES = [
+  {
+    icon: ShieldCheck,
+    english: "Grounded Q&A",
+    title: "可溯源知识问答",
+    description: "回答中的关键结论带有可点击来源，可以直接查看原始知识片段。",
+    href: "/ask",
+  },
+  {
+    icon: Workflow,
+    english: "Agent Execution",
+    title: "AI 任务执行",
+    description: "Agent 自动识别任务，选择业务能力并执行对应 Tool。",
+    href: "/agent",
+  },
+  {
+    icon: FileText,
+    english: "Solution Generation",
+    title: "售前方案生成",
+    description: "结合客户需求与企业知识，生成结构化解决方案。",
+    href: "/solution-studio",
+  },
+  {
+    icon: Search,
+    english: "Knowledge Insights",
+    title: "知识洞察",
+    description: "分析当前知识资产的覆盖情况，识别缺失资料并给出补充建议。",
+    href: "/insights/gaps",
+  },
+];
+
+const PIPELINE = ["企业资料", "知识检索", "证据筛选", "AI 生成", "可验证结果"];
+
+const TECH_IMPL: [string, string][] = [
+  ["企业资料", "Markdown / PDF / DOCX"],
+  ["知识检索", "BM25 + Vector"],
+  ["证据融合", "RRF"],
+  ["证据排序", "Heuristic Rerank"],
+  ["AI 生成", "DeepSeek"],
+  ["工作流", "LangGraph Agent"],
+];
+
+/* -------------------------------------------------------------------- page */
+
+export default function HomePage() {
+  return (
+    <div className="space-y-6">
+      <Hero />
+      <PrimaryActions />
+      <QuickStart />
+      <Capabilities />
+      <HowItWorks />
+      <DemoStatus />
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------- hero */
+
+function Hero() {
+  return (
+    <section className="relative overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-6 sm:px-7 sm:py-8">
+      <div
+        className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full opacity-[0.07]"
+        style={{ background: "radial-gradient(circle, var(--color-accent) 0%, transparent 68%)" }}
+        aria-hidden
+      />
+      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 max-w-2xl">
+          <p className="text-2xs font-semibold tracking-[0.14em] text-[var(--color-accent)]">
+            ENTERPRISE RAG COPILOT
+          </p>
+          <h1 className="mt-2 text-2xl font-bold leading-snug tracking-tight text-[var(--color-ink)] sm:text-[28px]">
+            让企业知识从「文件堆」
+            <br className="hidden sm:block" />
+            变成可问、可查、可执行的 AI 工作台
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+            基于企业知识库，实现可溯源知识问答、AI Agent 任务执行与售前方案生成。
+          </p>
+
+          {/* Deliberately low visual weight: useful to a technical reader,
+              noise to everyone else. */}
+          <div className="mt-4 flex flex-wrap items-center gap-1.5">
+            <span className="text-2xs text-[var(--color-ink-faint)]">技术栈</span>
+            <Badge tone="neutral">Hybrid RAG</Badge>
+            <Badge tone="neutral">LangGraph</Badge>
+            <Badge tone="neutral">公开只读 Demo</Badge>
+          </div>
+        </div>
+        <div className="hidden shrink-0 lg:block">
+          <KnowledgeMascot state="idle" size={104} withLabel />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------- primary actions */
+
+/**
+ * The three primary entry points.
+ *
+ * Laid out as three equal cards on desktop and stacked on phones, because the
+ * most common way in is a QR code scanned on a phone.
+ */
+function PrimaryActions() {
+  return (
+    <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      {PRIMARY_ACTIONS.map((action) => {
+        const Icon = action.icon;
+        return (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="group flex flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-5 transition-colors duration-150 hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)]/40"
+          >
+            <span className="flex size-10 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+              <Icon className="size-5" strokeWidth={2} />
+            </span>
+            <span className="mt-3.5 flex items-baseline gap-2">
+              <span className="text-base font-semibold text-[var(--color-ink)]">
+                {action.title}
+              </span>
+              <span className="text-2xs text-[var(--color-ink-faint)]">{action.english}</span>
+            </span>
+            <span className="mt-1.5 flex-1 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+              {action.description}
+            </span>
+            <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-accent)]">
+              {action.cta}
+              <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
+            </span>
+          </Link>
+        );
+      })}
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------- quickstart */
+
+function QuickStart() {
+  return (
+    <section className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-5 sm:px-6">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+          <Sparkles className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-[var(--color-ink)]">
+            第一次来？3 分钟体验 Enterprise RAG Copilot
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+            不需要了解 RAG 或 Agent，跟着三个真实任务体验即可。三个入口互相独立，任选一个开始。
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {QUICK_START.map((item) => (
+          <div
+            key={item.step}
+            className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-canvas)] p-4"
+          >
+            <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-accent)]">
+              {item.step}
+            </p>
+            <p className="mt-1.5 text-sm font-semibold text-[var(--color-ink)]">{item.title}</p>
+
+            <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2">
+              <p className="text-2xs text-[var(--color-ink-faint)]">示例</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                {item.example}
+              </p>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              {item.flow.map((step, index) => (
+                <span key={step} className="flex items-center gap-1.5">
+                  {index > 0 ? (
+                    <span aria-hidden className="text-[var(--color-ink-faint)]">
+                      →
+                    </span>
+                  ) : null}
+                  <span className="text-2xs text-[var(--color-ink-muted)]">{step}</span>
+                </span>
+              ))}
+            </div>
+
+            <Link href={item.href} className="mt-4 block">
+              <Button variant="outline" size="sm" className="w-full">
+                {item.cta}
+                <ArrowRight className="size-3.5" />
+              </Button>
+            </Link>
+            <p className="mt-2 text-center text-[10px] text-[var(--color-ink-faint)]">
+              只填入示例内容，不会自动提问
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------- capabilities */
+
+function Capabilities() {
+  return (
+    <section className="space-y-3">
+      <SectionLabel>核心能力</SectionLabel>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {CAPABILITIES.map((capability) => {
+          const Icon = capability.icon;
+          return (
+            <Link
+              key={capability.href}
+              href={capability.href}
+              className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 transition-colors duration-150 hover:border-[var(--color-line-strong)]"
+            >
+              <Icon className="size-4 text-[var(--color-accent)]" strokeWidth={2} />
+              <p className="mt-2.5 text-sm font-semibold text-[var(--color-ink)]">
+                {capability.title}
+              </p>
+              <p className="mt-1 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+                {capability.description}
+              </p>
+              <p className="mt-2 text-[10px] text-[var(--color-ink-faint)]">
+                {capability.english}
+              </p>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------- how it works */
+
+/**
+ * Product-level pipeline first, implementation second.
+ *
+ * A visitor reads "企业资料 → 知识检索 → …" and understands the shape of the
+ * system; the engineering terms sit underneath for the reader who wants them.
+ */
+function HowItWorks() {
+  return (
+    <section className="space-y-3">
+      <SectionLabel>它是怎么工作的</SectionLabel>
+      <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-5 sm:px-6">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-stretch lg:gap-0">
+          {PIPELINE.map((step, index) => (
+            <div key={step} className="flex flex-1 items-center gap-2 lg:flex-col lg:gap-3">
+              <div className="flex flex-1 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-canvas)] px-3 py-2.5 lg:w-full lg:flex-none">
+                <span className="text-xs font-medium text-[var(--color-ink)]">{step}</span>
+              </div>
+              {index < PIPELINE.length - 1 ? (
+                <span
+                  aria-hidden
+                  className="shrink-0 text-[var(--color-ink-faint)] lg:rotate-90"
+                >
+                  →
+                </span>
+              ) : null}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 border-t border-[var(--color-line-faint)] pt-4">
+          <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
+            技术实现
+          </p>
+          <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {TECH_IMPL.map(([label, value]) => (
+              <div
+                key={label}
+                className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line-faint)] py-1 last:border-0 sm:last:border-b"
+              >
+                <dt className="shrink-0 text-2xs text-[var(--color-ink-muted)]">{label}</dt>
+                <dd className="min-w-0 truncate text-right font-mono text-2xs text-[var(--color-ink-soft)]">
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------- demo status */
+
+/** Live figures from the running instance — below the fold, never the headline. */
+function DemoStatus() {
   const overviewQuery = useAsync<OverviewResponse>(() => api.overview(), []);
 
   if (overviewQuery.status === "loading") {
     return (
-      <div className="space-y-5">
+      <section className="space-y-3">
+        <SectionLabel>当前 Demo 状态</SectionLabel>
         <SkeletonGrid count={4} />
-        <SkeletonGrid count={4} />
-      </div>
+      </section>
     );
   }
 
   if (overviewQuery.status === "error") {
-    return <ErrorState error={overviewQuery.error} onRetry={overviewQuery.reload} />;
+    return (
+      <section className="space-y-3">
+        <SectionLabel>当前 Demo 状态</SectionLabel>
+        <ErrorState error={overviewQuery.error} onRetry={overviewQuery.reload} compact />
+      </section>
+    );
   }
 
   const overview = overviewQuery.data;
   const { knowledge, agent, rag, system } = overview;
 
   return (
-    <div className="space-y-5">
-      {/* ---------------------------------------------------------- hero */}
-      <section className="relative overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-6 py-6">
-        <div
-          className="pointer-events-none absolute -right-12 -top-16 size-64 rounded-full opacity-[0.07]"
-          style={{ background: "radial-gradient(circle, var(--color-accent) 0%, transparent 68%)" }}
-          aria-hidden
-        />
-        <div className="relative flex flex-wrap items-center justify-between gap-6">
-          <div className="min-w-0 max-w-2xl space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge tone="accent">
-                <Sparkles className="size-3" />v{system.version}
-              </Badge>
-              <Badge tone={system.llm_configured ? "success" : "warning"}>
-                <StatusDot tone={system.llm_configured ? "success" : "warning"} />
-                {system.llm_provider} · {system.llm_model}
-              </Badge>
-              {system.read_only ? (
-                <Badge tone="warning">
-                  <ShieldCheck className="size-3" />
-                  只读模式
-                </Badge>
-              ) : null}
-            </div>
-            <h2 className="text-xl font-semibold tracking-tight text-[var(--color-ink)]">
-              Enterprise RAG Copilot
-            </h2>
-            <p className="text-sm leading-relaxed text-[var(--color-ink-muted)]">
-              企业知识智能与售前 Agent 工作台。检索链路为
-              <span className="mx-1 font-medium text-[var(--color-ink-soft)]">
-                {system.retriever_mode}
-              </span>
-              （BM25 + 向量 + RRF 融合 + 重排序），回答中的每条事实都标注了可点击的引用来源。
-            </p>
-          </div>
-          <KnowledgeMascot state="idle" size={96} withLabel />
-        </div>
-
-        {/* quick actions */}
-        <div className="relative mt-5 flex flex-wrap gap-2">
-          {overview.quick_actions.map((action) => {
-            const Icon = ACTION_ICONS[action.id] ?? ArrowUpRight;
-            const disabled = !action.enabled;
-            return disabled ? (
-              <span
-                key={action.id}
-                title={action.description}
-                className="inline-flex cursor-not-allowed items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-1.5 text-xs text-[var(--color-ink-faint)]"
-              >
-                <Icon className="size-3.5" />
-                {action.label}
-              </span>
-            ) : (
-              <Link
-                key={action.id}
-                href={action.href}
-                title={action.description}
-                className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-1.5 text-xs text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent-ink)]"
-              >
-                <Icon className="size-3.5" />
-                {action.label}
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {!overview.data_available && overview.notes.length > 0 ? (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-warning-line)] bg-[var(--color-warning-soft)] px-4 py-3">
-          {overview.notes.map((note) => (
-            <p key={note} className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
-              {note}
-            </p>
-          ))}
-        </div>
-      ) : null}
-
-      {/* ------------------------------------------------------ knowledge */}
+    <>
       <section className="space-y-3">
-        <SectionLabel>Knowledge Base</SectionLabel>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <SectionLabel>当前 Demo 状态</SectionLabel>
+          <p className="text-2xs text-[var(--color-ink-faint)]">
+            以下数字全部来自运行中的实例，实时接口返回
+          </p>
+        </div>
+
+        {!overview.data_available && overview.notes.length > 0 ? (
+          <div className="rounded-[var(--radius-lg)] border border-[var(--color-warning-line)] bg-[var(--color-warning-soft)] px-4 py-3">
+            {overview.notes.map((note) => (
+              <p key={note} className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                {note}
+              </p>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <StatCard
-            label="文档"
+            label="企业文档"
             value={formatCount(knowledge.document_count)}
-            hint={`已索引 ${knowledge.indexed_document_count} · 共 ${formatCount(knowledge.total_chars)} 字符`}
+            hint={`已索引 ${knowledge.indexed_document_count} 篇`}
             icon={<FileStack className="size-4" />}
             tone="accent"
           />
@@ -152,17 +456,11 @@ export default function OverviewPage() {
             icon={<Boxes className="size-4" />}
           />
           <StatCard
-            label="索引状态"
-            value={
-              knowledge.index_state === "ready"
-                ? "就绪"
-                : knowledge.index_state === "empty"
-                  ? "空"
-                  : knowledge.index_state
-            }
-            hint={overview.system.embedding_model}
-            icon={<Database className="size-4" />}
-            tone={knowledge.index_state === "ready" ? "success" : "warning"}
+            label="知识检索"
+            value={system.retriever_mode === "hybrid" ? "混合检索" : system.retriever_mode}
+            hint="关键词 + 向量 + 融合 + 重排"
+            icon={<Search className="size-4" />}
+            tone="success"
           />
           <StatCard
             label="最近索引"
@@ -173,10 +471,8 @@ export default function OverviewPage() {
         </div>
       </section>
 
-      {/* ---------------------------------------------------------- agent */}
       <section className="space-y-3">
-        <SectionLabel>Agent</SectionLabel>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <StatCard
             label="Agent 运行"
             value={formatCount(agent.run_count)}
@@ -185,66 +481,62 @@ export default function OverviewPage() {
             tone="accent"
           />
           <StatCard
-            label="可用 Skill"
+            label="业务能力"
             value={agent.skill_count}
-            hint="意图 → Skill → Tool 三层"
+            hint="每个能力组织一类业务流程"
             icon={<Sparkles className="size-4" />}
           />
           <StatCard
-            label="可用 Tool"
+            label="可执行动作"
             value={agent.tool_count}
             hint={`累计调用 ${formatCount(agent.tool_call_count)} 次`}
             icon={<Cpu className="size-4" />}
           />
           <StatCard
-            label="执行引擎"
-            value={agent.engine}
-            hint="LangGraph 与内置状态机共用同一套节点"
-            icon={<Activity className="size-4" />}
+            label="问答次数"
+            value={formatCount(rag.question_count)}
+            hint={`引用 ${formatCount(rag.citation_count)} 处`}
+            icon={<MessageSquareText className="size-4" />}
           />
         </div>
       </section>
 
-      {/* ------------------------------------------------------------ rag */}
       <section className="space-y-3">
-        <SectionLabel>RAG</SectionLabel>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <StatCard
-            label="问答次数"
-            value={formatCount(rag.question_count)}
-            hint={`已记录 ${rag.answered_count} 次完整执行`}
-            icon={<MessageSquareText className="size-4" />}
-            tone="accent"
-          />
-          <StatCard
-            label="召回片段"
-            value={formatCount(rag.retrieval_hit_count)}
-            hint={`引用 ${formatCount(rag.citation_count)} 处`}
-            icon={<Boxes className="size-4" />}
-          />
-          <StatCard
-            label="平均延迟"
+            label="平均响应"
             value={formatMs(rag.average_latency_ms)}
             hint={`平均引用 ${rag.average_citations} 条`}
             icon={<Gauge className="size-4" />}
           />
           <StatCard
-            label="溯源率"
+            label="带来源回答比例"
             value={formatPercent(rag.grounded_rate)}
             hint="回答包含有效引用编号的比例"
             icon={<ShieldCheck className="size-4" />}
             tone={rag.grounded_rate >= 0.8 ? "success" : "warning"}
           />
+          <StatCard
+            label="执行引擎"
+            value={agent.engine === "langgraph" ? "LangGraph" : agent.engine}
+            hint="与内置状态机共用同一套节点"
+            icon={<Activity className="size-4" />}
+          />
+          <StatCard
+            label="检索模式"
+            value={system.retriever_mode}
+            hint={`${system.llm_provider} · ${system.llm_model}`}
+            icon={<Database className="size-4" />}
+          />
         </div>
       </section>
 
-      {/* -------------------------------------------------- detail panels */}
+      {/* ------------------------------------------------- detail panels */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        {/* coverage */}
-        <Card className="xl:col-span-1">
+        <Card>
           <CardHeader
             title="知识覆盖"
-            description="按预设资料类型的规则化覆盖判定"
+            description="按资料类型的规则化覆盖判定"
             icon={<BookOpen className="size-4" />}
             dense
           />
@@ -299,14 +591,13 @@ export default function OverviewPage() {
             </div>
             <Link href="/insights/gaps" className="block">
               <Button size="sm" variant="outline" className="w-full">
-                查看缺口详情与补录建议
+                查看知识洞察
                 <ArrowUpRight className="size-3.5" />
               </Button>
             </Link>
           </CardContent>
         </Card>
 
-        {/* category breakdown */}
         <Card>
           <CardHeader
             title="资料分类分布"
@@ -334,11 +625,10 @@ export default function OverviewPage() {
           </CardContent>
         </Card>
 
-        {/* recent activity */}
         <Card>
           <CardHeader
             title="最近活动"
-            description="来自 SQLite 活动台账"
+            description="来自运行台账"
             icon={<Activity className="size-4" />}
             dense
             actions={
@@ -432,7 +722,7 @@ export default function OverviewPage() {
         <Card>
           <CardHeader
             title="最近提问"
-            description="问答链路的问题记录与延迟"
+            description="问答链路的问题记录与耗时"
             icon={<MessageSquareText className="size-4" />}
             dense
             actions={
@@ -446,7 +736,7 @@ export default function OverviewPage() {
               <EmptyState
                 icon={<MessageSquareText className="size-5" />}
                 title="还没有提问记录"
-                description="在 Ask 页面提问后，问题、耗时与引用数会记录在这里。"
+                description="在知识问答里提问后，问题、耗时与引用数会记录在这里。"
               />
             ) : (
               overview.recent_questions.map((item) => (
@@ -470,6 +760,6 @@ export default function OverviewPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </>
   );
 }

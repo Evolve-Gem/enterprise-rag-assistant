@@ -1,6 +1,6 @@
 "use client";
 
-import { CornerDownLeft, Eraser, Settings2, Sparkles } from "lucide-react";
+import { ChevronDown, CornerDownLeft, Eraser, Settings2, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AnswerCard, AnswerPlaceholder } from "@/components/rag/answer-card";
@@ -10,20 +10,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, Select, Textarea } from "@/components/ui/field";
+import { PageIntro, StepNote } from "@/components/ui/page-intro";
 import { InlineError, InlineWarning } from "@/components/ui/states";
 import { SegmentedControl, Switch } from "@/components/ui/toggle";
 import { useToast } from "@/components/providers/toast-provider";
 import { api, ApiError } from "@/lib/api";
-import { useAsync } from "@/lib/hooks";
+import { useAsync, usePresetParam } from "@/lib/hooks";
 import type { ChatMessage, RagQueryResponse, SettingsResponse } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatMs } from "@/lib/utils";
 
+/**
+ * Starter questions.
+ *
+ * Wording matters here: these are phrasings the bundled knowledge base actually
+ * answers. A chip that returns nothing would be a worse first impression than
+ * showing no chips at all.
+ */
 const EXAMPLES = [
   "Rerank 在 RAG 检索链路里解决什么问题？",
-  "Top K 设置过大或过小分别有什么影响？",
-  "RAG 和微调有什么区别？",
-  "Skill 和 Tool 有什么区别？",
   "如何评估一个 RAG 系统的效果？",
+  "Chunk 切分粒度会怎么影响检索效果？",
+  "Skill 和 Tool 有什么区别？",
 ];
 
 type Mode = "hybrid" | "keyword" | "vector";
@@ -51,6 +58,12 @@ export default function AskPage() {
   const [activeCitation, setActiveCitation] = useState<number | null>(null);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // `/ask?q=…` from the home page: prefill only, never auto-submit.
+  usePresetParam("q", (value) => {
+    setQuestion(value);
+    inputRef.current?.focus();
+  });
 
   /* advance the stage indicator while the request is in flight */
   useEffect(() => {
@@ -110,6 +123,11 @@ export default function AskPage() {
 
   return (
     <div className="space-y-5">
+      <PageIntro
+        title="知识问答"
+        subtitle="向企业知识库提问。AI 会先查找相关资料，再基于证据回答并标注来源。"
+      />
+
       {settings.status === "success" && !llmReady ? (
         <InlineWarning message="后端未配置 LLM API Key，问答将只返回检索证据而不会生成回答。请在 .env 中设置 DEEPSEEK_API_KEY 或 LLM_API_KEY。" />
       ) : null}
@@ -122,7 +140,7 @@ export default function AskPage() {
               ref={inputRef}
               rows={3}
               value={question}
-              placeholder="向企业知识库提问，例如：Rerank 在 RAG 检索链路里解决什么问题？"
+              placeholder="例如：Rerank 在 RAG 检索链路里解决什么问题？"
               onChange={(event) => setQuestion(event.target.value)}
               onKeyDown={(event) => {
                 if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -150,7 +168,7 @@ export default function AskPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-2xs text-[var(--color-ink-faint)]">试试：</span>
+            <span className="text-2xs text-[var(--color-ink-faint)]">不知道问什么？试试这些</span>
             {EXAMPLES.map((example) => (
               <button
                 key={example}
@@ -257,6 +275,20 @@ export default function AskPage() {
         <div className="space-y-3">
           <AnswerCard response={response} onCitation={openCitation} />
 
+          <StepNote
+            label="这次回答发生了什么"
+            steps={["检索企业知识库", "找到相关证据", "重排序", "基于证据生成回答"]}
+            detail={
+              <p className="text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+                共检索 <b className="font-mono">{response.stats.candidate_count}</b> 个候选片段，
+                筛选后保留 <b className="font-mono">{response.stats.after_rerank}</b> 段作为回答依据，
+                其中 <b className="font-mono">{response.citations.length}</b> 处被正文引用。
+              </p>
+            }
+          />
+
+          <TechnicalDetails response={response} />
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-2xs text-[var(--color-ink-faint)]">
               <Badge tone="neutral">{turns.length} 轮对话上下文</Badge>
@@ -325,6 +357,63 @@ export default function AskPage() {
         activeIndex={activeCitation}
         onSelect={setActiveCitation}
       />
+    </div>
+  );
+}
+
+/**
+ * The retrieval internals, collapsed by default.
+ *
+ * A non-specialist reads the plain-language summary above; an engineer can open
+ * this for the actual scores and topology without either audience paying for
+ * the other.
+ */
+function TechnicalDetails({ response }: { response: RagQueryResponse }) {
+  const [open, setOpen] = useState(false);
+  const { stats } = response;
+
+  const rows: [string, string][] = [
+    ["检索模式", stats.mode],
+    ["候选片段", String(stats.candidate_count)],
+    ["BM25 关键词命中", String(stats.keyword_hits)],
+    ["向量分支命中", String(stats.vector_hits)],
+    ["融合策略", stats.fusion_strategy],
+    ["重排器", stats.rerank_provider],
+    ["重排后保留（Top K）", String(stats.after_rerank)],
+    ["端到端耗时", formatMs(response.latency_ms)],
+  ];
+
+  return (
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left"
+      >
+        <span className="text-xs font-medium text-[var(--color-ink-muted)]">查看技术过程</span>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-[var(--color-ink-faint)] transition-transform duration-150",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      {open ? (
+        <dl className="grid grid-cols-1 gap-x-8 gap-y-1.5 border-t border-[var(--color-line-faint)] px-3.5 py-3 sm:grid-cols-2">
+          {rows.map(([label, value]) => (
+            <div
+              key={label}
+              className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line-faint)] py-1 last:border-0"
+            >
+              <dt className="shrink-0 text-2xs text-[var(--color-ink-muted)]">{label}</dt>
+              <dd className="min-w-0 truncate text-right font-mono text-2xs text-[var(--color-ink-soft)]">
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </div>
   );
 }

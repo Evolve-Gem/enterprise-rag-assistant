@@ -3,7 +3,7 @@
 import { Lock, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { Sidebar } from "@/components/layout/sidebar";
+import { MobileNav, Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
@@ -21,6 +21,7 @@ import type { AuthStatus, HealthResponse, SettingsResponse } from "@/lib/types";
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useLocalStorage("copilot.sidebar.collapsed", false);
+  const [navOpen, setNavOpen] = useState(false);
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -145,13 +146,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         health={health.status === "success" ? health.data : undefined}
       />
 
+      <MobileNav
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        settings={settings.status === "success" ? settings.data : undefined}
+        health={health.status === "success" ? health.data : undefined}
+      />
+
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           health={health.status === "success" ? health.data : undefined}
+          readOnly={settings.status === "success" ? settings.data.guard_rails.read_only : false}
           onRefresh={reloadAll}
+          onOpenNav={() => setNavOpen(true)}
           refreshing={health.status === "loading"}
         />
-        <main className="min-w-0 flex-1 px-5 py-5 xl:px-7">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-4 sm:px-5 sm:py-5 xl:px-7">{children}</main>
       </div>
     </div>
   );

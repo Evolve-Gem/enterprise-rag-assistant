@@ -115,14 +115,17 @@ export function ErrorState({
   const isNetwork = error instanceof ApiError && error.status === 0;
   const isAuth = error instanceof ApiError && error.isUnauthorized;
 
+  // Written for whoever is looking at the page, not for whoever wrote it:
+  // the public demo has no console, and "start uvicorn" is not an instruction a
+  // visitor can act on. The actionable detail lives in the browser network tab.
   const title = isNetwork
-    ? "无法连接后端服务"
+    ? "暂时无法连接服务"
     : isAuth
       ? "需要访问密码"
       : "加载失败";
 
   const description = isNetwork
-    ? "请确认 FastAPI 后端已启动（uvicorn app.main:app --port 8000）。"
+    ? "演示服务暂时连不上，请稍后重试。如果持续失败，说明后端实例当前没有在运行。"
     : isAuth
       ? "当前部署启用了演示访问密码，请重新登录后再试。"
       : error.message;

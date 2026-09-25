@@ -1,7 +1,7 @@
 "use client";
 
-import { Bot, Play, ShieldAlert, Sparkles, Wrench } from "lucide-react";
-import { useCallback, useState } from "react";
+import { ArrowDown, Bot, Play, ShieldAlert, Sparkles, Wrench } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 
 import { TraceTimeline } from "@/components/agent/trace-timeline";
 import { KnowledgeMascot, type MascotState } from "@/components/mascot/knowledge-mascot";
@@ -12,22 +12,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, DefRow, SectionLabel } from "@/components/ui/card";
 import { TD, TH, TR, Table } from "@/components/ui/data";
 import { Field, Select, Textarea } from "@/components/ui/field";
+import { PageIntro } from "@/components/ui/page-intro";
 import { EmptyState, InlineError, InlineWarning, SkeletonRows } from "@/components/ui/states";
 import { SegmentedControl, Switch } from "@/components/ui/toggle";
 import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/providers/toast-provider";
 import { api, ApiError } from "@/lib/api";
-import { useAsync } from "@/lib/hooks";
+import { useAsync, usePresetParam } from "@/lib/hooks";
 import type { AgentCatalogResponse, AgentRunResponse } from "@/lib/types";
 import { formatMs, formatPercent } from "@/lib/utils";
 
 const EXAMPLE_TASKS = [
-  "Rerank 在 RAG 检索链路里解决什么问题？",
-  "当前知识库里有哪些资料？",
   "帮我分析当前知识库还缺少哪些售前资料。",
+  "总结当前知识库的主要内容。",
+  "分析这个项目还能怎样优化。",
+  "根据客户需求生成售前方案。",
+  "Rerank 在 RAG 检索链路里解决什么问题？",
   "帮我总结一下 RAG.md 这份文档",
-  "某职业院校希望建设统一知识库，用于招生咨询、教务政策问答，预算有限。请生成一份售前解决方案。",
-  "这个项目还能怎么用 Agent 优化？",
 ];
 
 const INTENT_OPTIONS = [
@@ -65,6 +66,10 @@ export default function AgentPage() {
   const [tab, setTab] = useState<DetailTab>("trace");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeCitation, setActiveCitation] = useState<number | null>(null);
+  const traceRef = useRef<HTMLDivElement>(null);
+
+  // `/agent?task=…` from the home page: prefill only, never auto-run.
+  usePresetParam("task", setTask);
 
   const run = useCallback(async () => {
     const text = task.trim();
@@ -103,14 +108,29 @@ export default function AgentPage() {
 
   const activeEngine = catalog.status === "success" ? catalog.data.active_engine : "—";
 
+  // The backend ships a human-readable label per intent; fall back to the raw id.
+  const intentLabel =
+    catalog.status === "success"
+      ? (catalog.data.intents.find((item) => item.intent === result?.intent)?.label ??
+        result?.intent ??
+        "—")
+      : (result?.intent ?? "—");
+
   return (
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+    <div className="space-y-5">
+      <PageIntro
+        title="AI 任务"
+        subtitle="告诉 Agent 你希望完成什么。它会自动识别任务类型，选择对应能力并执行。"
+        aside={<Badge tone="neutral">Agent → Skill → Tool</Badge>}
+      />
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
       {/* ------------------------------------------------------- controls */}
       <div className="space-y-4">
         <Card>
           <CardHeader
-            title="任务"
-            description="Agent 会识别意图、选择 Skill、调用 Tool 并展示完整轨迹"
+            title="要完成的任务"
+            description="用一句话描述目标即可，不需要说明该用哪个能力"
             icon={<Bot className="size-4" />}
             dense
           />
@@ -206,8 +226,8 @@ export default function AgentPage() {
         {catalog.status === "success" ? (
           <Card>
             <CardHeader
-              title="Skill 目录"
-              description="每个 Skill 组织一类业务能力"
+              title="可用业务能力"
+              description="每个能力组织一类业务流程，并按需调用底层工具"
               icon={<Wrench className="size-4" />}
               dense
             />
@@ -249,9 +269,9 @@ export default function AgentPage() {
             <CardContent className="flex items-center gap-5">
               <KnowledgeMascot state="searching" size={72} />
               <div className="space-y-1">
-                <p className="text-sm font-medium text-[var(--color-ink)]">Agent 正在执行…</p>
+                <p className="text-sm font-medium text-[var(--color-ink)]">正在执行你的任务…</p>
                 <p className="text-xs text-[var(--color-ink-muted)]">
-                  正在识别意图 → 制定计划 → 调用 Tool → 检索知识库 → 生成输出
+                  正在理解任务 → 选择业务能力 → 执行必要步骤 → 整理结果
                 </p>
               </div>
             </CardContent>
@@ -264,7 +284,7 @@ export default function AgentPage() {
           <EmptyState
             icon={<Bot className="size-5" />}
             title="还没有执行记录"
-            description="在左侧选择一个示例任务并点击「运行 Agent」，这里会展示意图、Skill、Tool 调用与逐步轨迹。"
+            description="在左侧选择一个示例任务，或自己写一句，然后点击「运行 Agent」。这里会先说明它做了什么，再展示完整执行轨迹。"
           />
         ) : null}
 
@@ -311,6 +331,48 @@ export default function AgentPage() {
                     {result.trace.length} 个
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Plain-language account of the run, derived from the real
+                execution record — not generated by a model. */}
+            <Card>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
+                    刚刚发生了什么
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      traceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    }
+                    className="inline-flex items-center gap-1 text-2xs text-[var(--color-accent)] hover:underline"
+                  >
+                    查看完整执行轨迹
+                    <ArrowDown className="size-3" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-x-8 gap-y-1.5 sm:grid-cols-2">
+                  <Fact label="识别任务" value={intentLabel} />
+                  <Fact label="选择能力" value={result.skill_name || "未匹配到能力"} />
+                  <Fact label="调用工具" value={`${result.tool_calls.length} 个`} />
+                  <Fact label="执行步骤" value={`${result.trace.length} 个`} />
+                </div>
+
+                <p className="text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+                  本次执行耗时 <span className="font-mono">{formatMs(result.latency_ms)}</span>
+                  {result.retrieved_chunks.length > 0 ? (
+                    <>
+                      ，使用 <span className="font-mono">{result.retrieved_chunks.length}</span> 段知识库证据，
+                      其中 <span className="font-mono">{result.citations.length}</span> 处被正文引用
+                    </>
+                  ) : (
+                    "，本次没有检索知识库"
+                  )}
+                  。
+                </p>
               </CardContent>
             </Card>
 
@@ -362,6 +424,7 @@ export default function AgentPage() {
             </Card>
 
             {/* detail tabs */}
+            <div ref={traceRef} className="scroll-mt-20">
             <Card>
               <Tabs<DetailTab>
                 value={tab}
@@ -461,6 +524,7 @@ export default function AgentPage() {
                 ) : null}
               </CardContent>
             </Card>
+            </div>
 
             {/* analysis (requirement parsing / coverage JSON) */}
             {result.analysis ? (
@@ -491,6 +555,17 @@ export default function AgentPage() {
         activeIndex={activeCitation}
         onSelect={setActiveCitation}
       />
+      </div>
+    </div>
+  );
+}
+
+/** One label/value pair in the plain-language run summary. */
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line-faint)] py-1 last:border-0">
+      <span className="shrink-0 text-2xs text-[var(--color-ink-muted)]">{label}</span>
+      <span className="min-w-0 truncate text-right text-xs text-[var(--color-ink)]">{value}</span>
     </div>
   );
 }

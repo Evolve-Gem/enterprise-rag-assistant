@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils";
 
 /** The five visible stages of a grounded answer, in execution order. */
 export const RAG_STAGES: { key: string; label: string; mascot: MascotState }[] = [
-  { key: "understanding", label: "正在理解问题", mascot: "understanding" },
-  { key: "searching", label: "正在检索知识库", mascot: "searching" },
-  { key: "reading", label: "正在阅读知识片段", mascot: "reading" },
-  { key: "reranking", label: "正在重排序证据", mascot: "reranking" },
-  { key: "generating", label: "正在生成回答", mascot: "generating" },
+  { key: "understanding", label: "正在理解你的问题", mascot: "understanding" },
+  { key: "searching", label: "正在搜索企业知识", mascot: "searching" },
+  { key: "reading", label: "正在筛选最相关证据", mascot: "reading" },
+  { key: "reranking", label: "正在组织答案", mascot: "reranking" },
+  { key: "generating", label: "正在生成可验证结果", mascot: "generating" },
 ];
 
 /**

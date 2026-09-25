@@ -1,44 +1,76 @@
 {
-  "task_id": "fanruan-fde-portfolio-2027",
-  "task_name": "帆软 FDE 解决方案工程师｜企业知识库 RAG/Agent 项目作品集",
-  "status": "RUNNING",
-  "phase": "Phase 1 完成 — 等待用户确认进入 Phase 2",
-  "acceptance_criteria": [
-    "Phase 1: 输出项目事实审计（已实现/部分实现/规划未实现/可展示证据/缺失资产 五部分）",
-    "Phase 1: 输出作品集信息架构（P1-P10 页面结构 + 视觉规范 + FDE 匹配映射）",
-    "Phase 1: 标注任务书摘要与真实实现的事实分歧",
-    "Phase 2: 页面文案定稿（每页标题/正文/图示建议）",
-    "Phase 3: 视觉素材补齐（缺失截图/架构图导出/二维码/录屏）",
-    "Phase 4: 生成 PDF 或可导出 PDF 的正式文档",
-    "Phase 5: 交付 10 项最终交付物（作品集内容/每页文案/缺失清单/演示路径/60秒/3分钟/300-500字/100字/10问/PDF）"
-  ],
-  "completed_steps": [
-    "读取工作区规范 C:\\agents\\README.md",
-    "读取项目 README / INTERVIEW_GUIDE / DEMO_SCRIPT / resume_enterprise_rag_update",
-    "实测后端测试：171 passed in 18.62s",
-    "实测索引缓存：24 documents / 283 chunks / schema v3 / chunk 500-100",
-    "核对 Skill 7 项 / Tool 10 项 / 缺口分类 11 类 / 前端 10 页面 / 后端 61 模块 11395 行",
-    "实测线上 Demo：https://rag.changziqi.com health + auth status 正常（2026-09-21）",
-    "实测生产服务器：backend+web healthy 2 days、证书 2026-12-09 到期、nginx 5 站点",
-    "修正 README/INTERVIEW_GUIDE/DEMO_SCRIPT 中过期的测试数（161/159 → 171）、IDF 错别字、模块数 50 → 61",
-    "产出 docs/portfolio/01_FACT_AUDIT.md",
-    "产出 docs/portfolio/02_INFORMATION_ARCHITECTURE.md",
-    "归档副本到 C:\\agents\\output\\fanruan-fde-portfolio\\（md5 一致）"
-  ],
-  "current_step": "Phase 1 交付完成，等待用户确认 3 项前置条件",
-  "remaining_steps": [
-    "等用户确认：页数（10 或 8）、版式（A4 横向/16:9）、GitHub 仓库可见性",
-    "Phase 2: 逐页文案定稿",
-    "Phase 3: 补齐 P0 图形资产（架构图/Workflow 图/拓扑图/二维码）",
-    "Phase 4: 生成 PDF",
-    "Phase 5: 输出 10 项最终交付物"
-  ],
-  "errors": [],
+  "task_id": "enterprise-rag-copilot-server-inventory-audit",
+  "task_name": "Server Inventory Audit — 81.70.51.32（只读）",
+  "status": "SUCCESS",
+  "phase": "审计完成，报告已交付",
+  "mandate": "只读扫描服务器资源；不要删除、不要重启、不要修改任何配置",
+  "mandate_honoured": "未执行任何 prune / rm / stop / restart / down；未改 nginx、systemd、安全组、.env 或任何应用文件。全部命令为 docker ps/images/volume/network/system df/info、du、df、ls、ss -lntp、nginx -t、grep、systemctl list-units",
+  "predecessor": {
+    "task_id": "enterprise-rag-copilot-v4.0-production-freeze",
+    "verdict": "PASS（条件通过）",
+    "artifact": "docs/PRODUCTION_FREEZE_REPORT.md"
+  },
+  "key_findings": {
+    "docker_data_root": "Docker 占用实际在 /var/lib/containerd（10 G）；/var/lib/docker 仅 38 M（containerd 快照器 / Storage Driver: overlayfs）。docker system df 的表观值（images 10.25 G / build cache 8.533 G）因共享层重复计入而虚高，唯一占用实测约 2.9 G",
+    "disk": "50 G 中用 29 G。/var 17 G（/var/lib 12 G、/var/backups 2.7 G、/var/www 2.0 G、/var/log 793 M）、/home 4.8 G（.vscode-server 4.5 G）、/usr 4.4 G、/boot 259 M、/opt 仅 18 M",
+    "containers": "4 个：web-1 / backend-1（本项目 V3，healthy）、enterprise-rag-demo（legacy V2 Streamlit，Up 4 weeks）、tender_euclid（hello-world，Exited 7 weeks 垃圾）",
+    "images": "7 个 + 1 悬空。悬空 d0d04a129052 唯一占用 43 MB 可清；hello-world 可清；rag-copilot-web:3.0.0 是 V4 回滚镜像必须留；python:3.12-slim 与 node:22-alpine 是构建基础镜像必须留（prune 会优先误伤，本机重拉 pypi 仅 18 KB/s）",
+    "volumes": "仅 enterprise-rag-copilot_backend-data（490.3 kB，links=1，在用）",
+    "networks": "bridge / enterprise-rag-copilot_default（在用）/ host / none",
+    "opt": "/opt 共 18 M，只有 enterprise-rag-copilot/repo（18 M，.git 7.9 M）。.env 实际在 repo/.env（600，5556 B）+ repo/.env.bak.20260919-120955（600，5084 B）",
+    "raw_port_exposure": "公网实测 :8000（gunicorn / eat-what.service，502）与 :8502（enterprise-rag-demo，200）可达；:3001 / :18000 / :18080 均不可达（仅回环 + nginx 前置）。建议安全组收敛到仅 80/443（本次未改）；无任何 nginx 站点引用 8501/8502"
+  },
+  "cleanup_candidates": {
+    "T1_zero_risk": [
+      "容器 tender_euclid（hello-world，Exited 7 weeks）→ 4 KB",
+      "镜像 hello-world:latest → 26 KB",
+      "悬空镜像 d0d04a129052 → 43 MB 唯一占用"
+    ],
+    "T2_low_risk_high_value": [
+      "Docker 构建缓存 ~6.2 GB（docker builder prune）",
+      "journal 745 MB（vacuum 到 200 MB 省 ~545 MB）",
+      "snap 5 个 disabled 旧修订（/var/lib/snapd 共 1001 MB）",
+      "/home/ubuntu/.vscode-server 4.5 GB（下次 VS Code Remote 连接会重下）"
+    ],
+    "T3_needs_user_confirmation": [
+      "enterprise-rag-demo 容器 + 803 MB 镜像（legacy V2，仍公网 :8502 返回 200）",
+      "/var/backups 两个 love-archive tar 共 2.7 GB（非本项目）",
+      "/home/ubuntu/apps/enterprise-rag-assistant（疑似 legacy V2 旧部署）",
+      "/var/www/changziqi-space.bak-*（3 个，共 ~1.6 MB）"
+    ],
+    "must_keep": [
+      "rag-copilot-web:3.0.0（V4 回滚镜像）",
+      "rag-copilot-backend:3.0.0",
+      "python:3.12-slim / node:22-alpine（构建基础镜像）",
+      "volume enterprise-rag-copilot_backend-data",
+      "network enterprise-rag-copilot_default",
+      "/opt/enterprise-rag-copilot/repo/.env + .env.bak.*",
+      "/home/ubuntu/apps/eat-what、moodcare（systemd 服务 live 代码）",
+      "/var/www/love-archive-preview（2.0 GB，在用站点根）"
+    ]
+  },
+  "sequencing_rule": "不要把清理与 V4 发布放进同一窗口：发布窗口只做 T1/T2；rag-copilot-web:3.0.0 与 legacy 容器等 V4 稳定 3–7 天后再评估，否则同时拆掉两条退路",
   "artifacts": [
-    "docs/portfolio/01_FACT_AUDIT.md",
-    "docs/portfolio/02_INFORMATION_ARCHITECTURE.md",
-    "C:\\agents\\output\\fanruan-fde-portfolio\\01_FACT_AUDIT.md",
-    "C:\\agents\\output\\fanruan-fde-portfolio\\02_INFORMATION_ARCHITECTURE.md"
+    "docs/SERVER_INVENTORY_AUDIT.md（224 行）",
+    "C:/agents/output/enterprise-rag-copilot-server-audit/SERVER_INVENTORY_AUDIT.md（md5 4a32d0ecd6920dd2b9f44e42239cbb6f 一致）"
   ],
-  "updated_at": "2026-09-21T15:20:00+08:00"
+  "errors": [
+    {
+      "issue": "首轮 docker 格式化输出被 column -t -s $\"\\t\" 拆分错位（POSIX sh 不支持 $\"\\t\"）",
+      "resolution": "改用纯文本分隔符重跑，得到准确字段"
+    },
+    {
+      "issue": "grep -r 未跟随 sites-enabled 的符号链接，\"8501/8502 无引用\"一度为空结果",
+      "resolution": "改用 shell 通配（cat/grep 直接吃 /etc/nginx/sites-enabled/*）确认为 NONE，避免把\"没搜到\"当成\"不存在\""
+    },
+    {
+      "issue": "du /var/lib/docker 只有 1.9G，与 docker system df 的 10.25G 矛盾",
+      "resolution": "查 docker info 得 Docker Root Dir=/var/lib/docker 但 Storage Driver=overlayfs；再逐层 du 定位到 /var/lib/containerd 10G，确认为 containerd 快照器；已把该口径写入报告与 memory"
+    },
+    {
+      "issue": "曾假设 :8502 因安全组不可达",
+      "resolution": "实测返回 200，推翻假设；已更正并把裸端口暴露写入报告第 6 节"
+    }
+  ],
+  "updated_at": "2026-09-25T17:55:00+08:00"
 }
