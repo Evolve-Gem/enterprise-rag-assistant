@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
+  ChevronDown,
   Compass,
   Database,
   FileStack,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { StatusDot } from "@/components/ui/badge";
 import type { HealthResponse, SettingsResponse } from "@/lib/types";
@@ -41,6 +42,12 @@ interface NavItem {
 interface NavGroup {
   label: string;
   items: NavItem[];
+  /**
+   * Rendered collapsed by default. Used for the advanced/technical pages so
+   * they never carry the same visual weight as the three core entry points.
+   * A group containing the active route always renders open.
+   */
+  collapsible?: boolean;
 }
 
 /**
@@ -74,6 +81,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "高级能力",
+    collapsible: true,
     items: [
       { href: "/insights/evaluation", label: "RAG 评测", english: "Evaluation", icon: FlaskConical },
       { href: "/insights/activity", label: "运行记录", english: "Activity", icon: Activity },
@@ -112,6 +120,14 @@ function SidebarNav({
   health?: HealthResponse;
 }) {
   const pathname = usePathname();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const isGroupOpen = (group: NavGroup) => {
+    if (!group.collapsible) return true;
+    // Never hide the page the user is on.
+    if (group.items.some((item) => isActiveItem(item, pathname))) return true;
+    return openGroups[group.label] ?? false;
+  };
 
   const indexState = health?.index_ready
     ? `${health.index_document_count} 文档 · ${health.index_chunk_count} 块`
@@ -149,14 +165,36 @@ function SidebarNav({
         {NAV_GROUPS.map((group) => (
           <div key={group.label} className="mb-4 last:mb-0">
             {!collapsed ? (
-              <p className="mb-1.5 px-2 text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
-                {group.label}
-              </p>
+              group.collapsible ? (
+                <button
+                  type="button"
+                  aria-expanded={isGroupOpen(group)}
+                  onClick={() =>
+                    setOpenGroups((current) => ({
+                      ...current,
+                      [group.label]: !isGroupOpen(group),
+                    }))
+                  }
+                  className="mb-1.5 flex min-h-11 w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-left text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)] transition-colors hover:text-[var(--color-ink-soft)] md:min-h-0 md:py-1"
+                >
+                  {group.label}
+                  <ChevronDown
+                    className={cn(
+                      "size-3 shrink-0 transition-transform duration-200",
+                      isGroupOpen(group) && "rotate-180",
+                    )}
+                  />
+                </button>
+              ) : (
+                <p className="mb-1.5 px-2 text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
+                  {group.label}
+                </p>
+              )
             ) : (
               <div className="mx-2 mb-2 border-t border-[var(--color-line-faint)]" />
             )}
 
-            <ul className="space-y-0.5">
+            <ul className={cn("space-y-0.5", !isGroupOpen(group) && "hidden")}>
               {group.items.map((item) => {
                 const active = isActiveItem(item, pathname);
                 const Icon = item.icon;
@@ -332,7 +370,7 @@ export function MobileNav({
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-y-0 left-0 z-[111] flex h-dvh w-[17rem] max-w-[86vw] flex-col border-r border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl md:hidden"
+            className="fixed inset-y-0 left-0 z-[111] flex h-dvh w-[86vw] max-w-[22rem] flex-col border-r border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl md:hidden"
           >
             <SidebarNav
               collapsed={false}

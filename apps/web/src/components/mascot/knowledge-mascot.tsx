@@ -153,9 +153,16 @@ export function KnowledgeMascot({
               <motion.rect
                 key={index}
                 x={37 + index * 5}
+                y={65}
                 width="2.4"
+                height={3}
                 rx="1.2"
                 fill="url(#mascot-core)"
+                /* `initial` seeds the motion value. Without it framer-motion
+                   applies an undefined `height` on the first frame, which the
+                   browser reports as `<rect> attribute height: Expected length,
+                   "undefined"` — five times, one per bar. */
+                initial={{ height: 3, y: 65 }}
                 animate={{ height: [3, 7, 3], y: [65, 62, 65] }}
                 transition={{
                   duration: 0.7,

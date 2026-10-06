@@ -85,10 +85,12 @@ Docker 29.1.3 + Compose 2.40.3；Nginx 1.18；UFW inactive（边界是**腾讯�
 
 | 项 | 值 |
 | --- | --- |
-| 部署提交 | **2026-09-25 复勘：`8725620`**（`v3.0.4-1-g8725620`）。历史值 `b2487ab`（tag `v3.0.4`）仅供参考 |
+| 部署提交 | **`5396db2`**（V4.0 发布，2026-09-25）。此前为 `8725620`；更早 `b2487ab`（tag `v3.0.4`） |
 | 部署目录 | `/opt/enterprise-rag-copilot/repo`（compose 工作目录）｜**`.env` 实际在 `repo/.env`**（600，5556 B），备份同目录 `repo/.env.bak.20260919-120955`（600，5084 B） |
 | `.env` 备份 | `/opt/enterprise-rag-copilot/.env.bak.20260919-120955`（5084 B，mode 600） |
 | 生效配置 | `password=False read_only=True rate_limit=10/60s`，索引 24 文档 / 283 chunks |
+| **V4.0 镜像** | **`rag-copilot-web:4.0.0`**（`e9d9d6a5a5ad`，2026-09-25 18:31 构建）；**`rag-copilot-web:3.0.0` 保留为回滚镜像**；backend 按规程未重建，仍 `3.0.0` |
+| V4 回滚命令 | `sed -i "s\|rag-copilot-web:4.0.0\|rag-copilot-web:3.0.0\|" docker-compose.yml && docker compose up -d web` |
 | 镜像加速 | `.env` 里 `PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple`、`NPM_REGISTRY=https://registry.npmmirror.com`（**没有它们构建会卡死 20+ 分钟**） |
 | 恢复口令门禁 | `.env` 填回强随机 `DEMO_PASSWORD` → `docker compose up -d --force-recreate backend web`（认证代码从未删除） |
 
@@ -123,8 +125,16 @@ Docker 29.1.3 + Compose 2.40.3；Nginx 1.18；UFW inactive（边界是**腾讯�
   Next 的构建 tracer 与它冲突 → 构建在 "Creating an optimized production build ..." 后立刻
   `uncaughtException EPERM`，**重试 4 次同样失败**（不是文件锁：手动 `fs.writeFileSync('.next/trace')`
   与 `openSync(...,'a')` 都成功，`.next` 可写、磁盘充足）。
-  **绕过：该条命令清空 `NODE_OPTIONS`** —— `NODE_OPTIONS="" node node_modules/next/dist/bin/next build`。
-  本机 PowerShell-from-Bash 被安全策略拦截，所以只能在 Bash 里以内联 env 前缀方式给这一条命令用。
+  **绕过（2026-10-05 实测更正 —— 别信"换 node 就好了"）**：这个坑**是偶发的**。
+  我一度根据"系统 node 成功过一次"就下了结论，紧接着同一命令又失败 —— 单次成功不算证据。
+  已证伪：① 不是文件锁（手工 `openSync(...,'a')` 成功）；② 不是路径（改 `distDir` 后错误跟着走）；
+  ③ 不是宿主 shim（`NODE_OPTIONS=""` 已确认生效，仍失败）。
+  **机制**（读 `next/dist/trace/report/to-json.js` 定位）：它用 `fs.createWriteStream` 写 trace
+  **且没挂 error 监听** → 写失败即致命 `uncaughtException`。trace 只是遥测，本不该阻断构建。
+  **本机已成功两次的组合**：`NODE_OPTIONS="" "C:/Program Files/nodejs/node.exe" node_modules/next/dist/bin/next build`
+  **并且保留 `.next`（不要先挪走）** —— 实测挪走反而更容易失败。
+  **保险绳**（可选）：`NODE_OPTIONS="--require C:/agents/temp/next-trace-tolerance.cjs"` 给 trace 流挂 error 监听。
+  **容器不受影响**，Docker 构建正常。
 - **git 嵌套 ref 静默失效**：`git branch upgrade/xxx` / `update-ref` 返回 0 但不写文件。
   绕过：维护 `.git/packed-refs`（**必须 LF 换行** + 完整 40 位 SHA）。
   **每次 commit 后都要手动把新 SHA 写回 packed-refs**。

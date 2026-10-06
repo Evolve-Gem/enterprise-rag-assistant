@@ -92,11 +92,11 @@ services:
         NEXT_PUBLIC_API_BASE_URL: "${NEXT_PUBLIC_API_BASE_URL-}"
         # See the backend service: a regional npm mirror, build-time only.
         NPM_REGISTRY: "${NPM_REGISTRY:-}"
-    # V4.0 product-experience release. The tag is bumped deliberately: rebuilding
-    # under the old tag would overwrite `rag-copilot-web:3.0.0` and destroy the
-    # one-command rollback path. The backend is intentionally NOT bumped — the
-    # V4 release changes no backend code, so its image stays 3.0.0 and is reused.
-    image: rag-copilot-web:4.0.0
+    # V4.1 UX-polish release. The tag is bumped deliberately: rebuilding under
+    # the previous tag would overwrite `rag-copilot-web:4.0.0` and destroy the
+    # one-command rollback path. The backend is intentionally NOT bumped — this
+    # release changes no backend code, so its image stays 3.0.0 and is reused.
+    image: rag-copilot-web:4.1.0
     environment:
       PORT: "3001"
       # Runtime proxy target for /api and /health (see next.config.ts). Because

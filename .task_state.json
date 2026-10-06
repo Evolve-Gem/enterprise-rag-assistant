@@ -1,76 +1,122 @@
 {
-  "task_id": "enterprise-rag-copilot-server-inventory-audit",
-  "task_name": "Server Inventory Audit — 81.70.51.32（只读）",
+  "task_id": "enterprise-rag-copilot-v4.1-patch-pass",
+  "task_name": "Enterprise RAG Copilot V4.1 — Product Review Patch Pass",
   "status": "SUCCESS",
-  "phase": "审计完成，报告已交付",
-  "mandate": "只读扫描服务器资源；不要删除、不要重启、不要修改任何配置",
-  "mandate_honoured": "未执行任何 prune / rm / stop / restart / down；未改 nginx、systemd、安全组、.env 或任何应用文件。全部命令为 docker ps/images/volume/network/system df/info、du、df、ls、ss -lntp、nginx -t、grep、systemctl list-units",
-  "predecessor": {
-    "task_id": "enterprise-rag-copilot-v4.0-production-freeze",
-    "verdict": "PASS（条件通过）",
-    "artifact": "docs/PRODUCTION_FREEZE_REPORT.md"
-  },
-  "key_findings": {
-    "docker_data_root": "Docker 占用实际在 /var/lib/containerd（10 G）；/var/lib/docker 仅 38 M（containerd 快照器 / Storage Driver: overlayfs）。docker system df 的表观值（images 10.25 G / build cache 8.533 G）因共享层重复计入而虚高，唯一占用实测约 2.9 G",
-    "disk": "50 G 中用 29 G。/var 17 G（/var/lib 12 G、/var/backups 2.7 G、/var/www 2.0 G、/var/log 793 M）、/home 4.8 G（.vscode-server 4.5 G）、/usr 4.4 G、/boot 259 M、/opt 仅 18 M",
-    "containers": "4 个：web-1 / backend-1（本项目 V3，healthy）、enterprise-rag-demo（legacy V2 Streamlit，Up 4 weeks）、tender_euclid（hello-world，Exited 7 weeks 垃圾）",
-    "images": "7 个 + 1 悬空。悬空 d0d04a129052 唯一占用 43 MB 可清；hello-world 可清；rag-copilot-web:3.0.0 是 V4 回滚镜像必须留；python:3.12-slim 与 node:22-alpine 是构建基础镜像必须留（prune 会优先误伤，本机重拉 pypi 仅 18 KB/s）",
-    "volumes": "仅 enterprise-rag-copilot_backend-data（490.3 kB，links=1，在用）",
-    "networks": "bridge / enterprise-rag-copilot_default（在用）/ host / none",
-    "opt": "/opt 共 18 M，只有 enterprise-rag-copilot/repo（18 M，.git 7.9 M）。.env 实际在 repo/.env（600，5556 B）+ repo/.env.bak.20260919-120955（600，5084 B）",
-    "raw_port_exposure": "公网实测 :8000（gunicorn / eat-what.service，502）与 :8502（enterprise-rag-demo，200）可达；:3001 / :18000 / :18080 均不可达（仅回环 + nginx 前置）。建议安全组收敛到仅 80/443（本次未改）；无任何 nginx 站点引用 8501/8502"
-  },
-  "cleanup_candidates": {
-    "T1_zero_risk": [
-      "容器 tender_euclid（hello-world，Exited 7 weeks）→ 4 KB",
-      "镜像 hello-world:latest → 26 KB",
-      "悬空镜像 d0d04a129052 → 43 MB 唯一占用"
-    ],
-    "T2_low_risk_high_value": [
-      "Docker 构建缓存 ~6.2 GB（docker builder prune）",
-      "journal 745 MB（vacuum 到 200 MB 省 ~545 MB）",
-      "snap 5 个 disabled 旧修订（/var/lib/snapd 共 1001 MB）",
-      "/home/ubuntu/.vscode-server 4.5 GB（下次 VS Code Remote 连接会重下）"
-    ],
-    "T3_needs_user_confirmation": [
-      "enterprise-rag-demo 容器 + 803 MB 镜像（legacy V2，仍公网 :8502 返回 200）",
-      "/var/backups 两个 love-archive tar 共 2.7 GB（非本项目）",
-      "/home/ubuntu/apps/enterprise-rag-assistant（疑似 legacy V2 旧部署）",
-      "/var/www/changziqi-space.bak-*（3 个，共 ~1.6 MB）"
-    ],
-    "must_keep": [
-      "rag-copilot-web:3.0.0（V4 回滚镜像）",
-      "rag-copilot-backend:3.0.0",
-      "python:3.12-slim / node:22-alpine（构建基础镜像）",
-      "volume enterprise-rag-copilot_backend-data",
-      "network enterprise-rag-copilot_default",
-      "/opt/enterprise-rag-copilot/repo/.env + .env.bak.*",
-      "/home/ubuntu/apps/eat-what、moodcare（systemd 服务 live 代码）",
-      "/var/www/love-archive-preview（2.0 GB，在用站点根）"
-    ]
-  },
-  "sequencing_rule": "不要把清理与 V4 发布放进同一窗口：发布窗口只做 T1/T2；rag-copilot-web:3.0.0 与 legacy 容器等 V4 稳定 3–7 天后再评估，否则同时拆掉两条退路",
-  "artifacts": [
-    "docs/SERVER_INVENTORY_AUDIT.md（224 行）",
-    "C:/agents/output/enterprise-rag-copilot-server-audit/SERVER_INVENTORY_AUDIT.md（md5 4a32d0ecd6920dd2b9f44e42239cbb6f 一致）"
+  "phase": "Patch Pass 完成；本地验收通过；未部署",
+  "mandate": "本地实现 + 验收；不部署线上。backend 保持 0 修改。",
+  "previous_task": "enterprise-rag-copilot-v4.0-production-release（已上线 5396db2）",
+  "acceptance_criteria": [
+    "AC1 统一设计系统：复用既有原语；新增 SectionAccordion / MainTaskPanel / HeroPanel / CompactMetric / ResultSection ✅",
+    "AC2 radius 统一 12 / 16 / 20 + 150-250ms 动画，无动画库 ✅",
+    "AC3 首页显著压缩：Demo Dashboard 全部下沉进 Accordion 默认折叠 ✅",
+    "AC4 Hero 高质感 + 主 CTA 立即提问 + 次 CTA 体验 AI Agent + 4 技术标签 + Mascot 状态感 ✅",
+    "AC5 3 分钟体验：桌面横向 Rail、手机纵向 compact ✅",
+    "AC6 Agent 页：MainTaskPanel 合并任务输入/示例/执行设置/运行；业务能力默认折叠；未执行一屏可发起；结果优先 + 诊断全折叠 ✅",
+    "AC7 Solution Studio：同范式；结构化字段与生成设置折叠；结果优先 ✅",
+    "AC8 知识库：Compact Metrics → Search/Filter → 列表；详情改 Drawer；高级信息 Accordion ✅",
+    "AC9 知识探索：首屏 Query/Probe + Top results；检索详情折叠 ✅",
+    "AC10 知识洞察：Coverage Summary + 优先补充建议；完整判定依据折叠 ✅",
+    "AC11 RAG 评测：核心指标 + 动态生成的用户结论；其余全折叠 ✅",
+    "AC12 Activity/Settings：只统一 Typography/Card/Spacing/Accordion/EmptyState ✅",
+    "AC13 Sidebar：高级能力组可折叠 ✅",
+    "AC14 Mobile：抽屉近全屏(86vw)、顶栏收敛、Hero 单栏、MainTaskPanel 单列、触控 >=44px ✅",
+    "AC15 Accordion label 全部自解释 ✅",
+    "AC16 pytest 全绿 / tsc 0 error / eslint 0 warning / next build 成功 ✅",
+    "AC17 Browser QA 5 视口 × 9 页面 ✅",
+    "AC18 UX Compression QA：记录每页默认高度 ✅",
+    "AC19 截图 docs/images/v4.1/ 8 张 + mobile/ 9 张 ✅",
+    "AC20 docs/V4_1_UX_ACCEPTANCE.md（含独立 Mobile QR Experience 章节 + 双 Verdict）✅"
+  ],
+  "completed_steps": [
+    "AC1-AC2 共享组件：section.tsx、hero-panel.tsx、CompactMetric、radius-2xl/glass 令牌",
+    "AC3-AC5 首页重写：HeroPanel glass + 双 CTA + 4 标签 + Mascot 状态；3 分钟 Rail；Demo 状态整体 Accordion；核心能力压缩为紧凑瓦片；技术实现折叠",
+    "AC6 Agent 页重写、AC7 Solution Studio 重写（同一 MainTaskPanel 范式）",
+    "AC8-AC12 五个页面由 3 个子代理并行完成，全部 tsc 通过",
+    "AC13 Sidebar 高级能力可折叠（含 active 路由强制展开）",
+    "AC14 抽屉 86vw；顶栏手机隐藏 refresh；globals.css 增加手机断点 44px 触控规则",
+    "AC16 pytest 171 passed；tsc 0 error；eslint 0 warning；next build 成功（12 路由 / 71s）",
+    "P0-1 手机首屏：Hero 压缩 + Mascot 改 38px 单行状态区 + 三张 Compact Action Row（127px→60px）",
+    "P0-2 Agent 状态式布局：IDLE 满宽、无结果占位；RESULT 输入折叠为「本次任务」、结果优先",
+    "P0-3 Solution 状态式布局：IDLE 满宽；RESULT 输入折叠、方案满宽（ratio 0.953）",
+    "P1 首页去重：移除四个核心能力 tiles，并入「它是怎么工作的」",
+    "修正上一版报告的首屏结论（测量口径错误），并重新实测",
+    "修掉 motion.rect 的 <rect height=undefined>（补 initial），Solution generating 态 console error 0",
+    "最终 QA：45 组合 hard failures 0；触控违规 0；断链 0；backend 0 修改"
+  ],
+  "current_step": "完成",
+  "remaining_steps": [
+    "等 Product Review；通过后再走生产发布流程（本轮明确不做）"
   ],
   "errors": [
     {
-      "issue": "首轮 docker 格式化输出被 column -t -s $\"\\t\" 拆分错位（POSIX sh 不支持 $\"\\t\"）",
-      "resolution": "改用纯文本分隔符重跑，得到准确字段"
+      "issue": "next build 报 EPERM: open '<distDir>/trace'，本机偶发（当天 8 次尝试仅 2 次成功）",
+      "root_cause": "next/dist/trace/report/to-json.js 用 fs.createWriteStream 写构建 trace 且未挂 error 监听 → 写失败即致命 uncaughtException。trace 仅是诊断遥测，本不该阻断构建。",
+      "falsified_hypotheses": [
+        "不是文件锁：手工 openSync('.next/trace','a') 成功",
+        "不是路径：改 distDir 后错误跟着变成 .nextbuild/trace",
+        "不是宿主 shim：NODE_OPTIONS=\"\" 已确认生效，仍失败"
+      ],
+      "working_pattern": "NODE_OPTIONS=\"\" \"C:/Program Files/nodejs/node.exe\" node_modules/next/dist/bin/next build，且保留 .next 不要先挪走（已成功 2 次）",
+      "fallback": "C:/agents/temp/next-trace-tolerance.cjs（--require 给 trace 流挂 error 监听）",
+      "note": "我一度把「托管 node 运行时」当根因写入 skill 与 MEMORY.md，随后同命令再次失败，已更正为以上实证结论"
     },
     {
-      "issue": "grep -r 未跟随 sites-enabled 的符号链接，\"8501/8502 无引用\"一度为空结果",
-      "resolution": "改用 shell 通配（cat/grep 直接吃 /etc/nginx/sites-enabled/*）确认为 NONE，避免把\"没搜到\"当成\"不存在\""
+      "issue": "V4.0 报告的 AC12/AC13（知识洞察 / RAG 评测产品化）标为 ✅ 但实际未实现",
+      "root_cause": "当时批量改写脚本把改动累加到局部变量 text，却把未修改的原始字符串写回文件 → 脚本零失败、tsc 通过，但什么都没写",
+      "impact": "仅两页未获得产品化改进，无功能损坏、无线上事故",
+      "action_taken": "已在 docs/V4_RELEASE_REPORT.md §10 增加更正条目；V4.1 已重做这两页"
     },
     {
-      "issue": "du /var/lib/docker 只有 1.9G，与 docker system df 的 10.25G 矛盾",
-      "resolution": "查 docker info 得 Docker Root Dir=/var/lib/docker 但 Storage Driver=overlayfs；再逐层 du 定位到 /var/lib/containerd 10G，确认为 containerd 快照器；已把该口径写入报告与 memory"
+      "issue": "子代理指出 Button size=sm(32px) 与 Select(36px) 低于 44px 触控标准",
+      "action_taken": "在 globals.css 以手机断点统一提升，并排除 prose 内联链接"
     },
     {
-      "issue": "曾假设 :8502 因安全组不可达",
-      "resolution": "实测返回 200，推翻假设；已更正并把裸端口暴露写入报告第 6 节"
+      "issue": "上一版报告「首屏可见三张核心入口卡片」结论错误（用户指出）",
+      "root_cause": "① 判定用 rect.top < vh（顶边进视口即算可见）而非完整可见；② querySelector 命中 display:none 的桌面卡片，0×0 恰好通过判定；③ 沿用 V4.0 旧结论未重量",
+      "action_taken": "修正判定口径（先排除 width/height<2 的隐藏元素，再要求完整落在视口内；作用域收窄到 main h1），重新实测并在报告 §0.1 显式更正"
+    },
+    {
+      "issue": "上一版「交互期间 console error 归零」只覆盖 Agent 流程",
+      "root_cause": "Agent 用 searching mascot，从未渲染出问题的那 5 个 motion.rect；出问题的是 Solution 的 generating 分支",
+      "action_taken": "补测 generating 态定位到 motion.rect，加 initial 播种 motion value；两状态实测均 0"
+    },
+    {
+      "issue": "bash 内联 python -c 的反引号被当命令替换，静默把 className 写成 className={}",
+      "root_cause": "模板字符串里的反引号在 bash 双引号内被解释为命令替换",
+      "action_taken": "用 Edit 工具修回；定为纪律：改代码不用 python -c 内联，且写完必须回读验证"
     }
   ],
-  "updated_at": "2026-09-25T17:55:00+08:00"
+  "artifacts": [
+    "apps/web/src/components/ui/section.tsx (new)",
+    "apps/web/src/components/ui/hero-panel.tsx (new)",
+    "apps/web/src/components/ui/data.tsx (CompactMetric)",
+    "apps/web/src/app/page.tsx (rewritten)",
+    "apps/web/src/app/agent/page.tsx (rewritten)",
+    "apps/web/src/app/solution-studio/page.tsx (rewritten)",
+    "apps/web/src/app/globals.css",
+    "apps/web/src/components/layout/sidebar.tsx",
+    "apps/web/src/components/layout/topbar.tsx",
+    "apps/web/src/app/knowledge/{documents,explorer}/page.tsx",
+    "apps/web/src/app/insights/{gaps,evaluation,activity}/page.tsx",
+    "apps/web/src/app/settings/page.tsx",
+    "docs/V4_1_UX_ACCEPTANCE.md（验收报告，含 Mobile QR Experience 独立章节）",
+    "docs/images/v4.1/（桌面 8 张）",
+    "docs/images/v4.1/mobile/（手机 9 张）",
+    "C:/agents/output/enterprise-rag-copilot-v4.1-review/（报告归档）",
+    "docs/V4_RELEASE_REPORT.md §10 更正条目（V4.0 事实错误）",
+    "C:/agents/temp/next-trace-tolerance.cjs（本机构建保险绳）"
+  ],
+  "updated_at": "2026-10-05T16:46:00+08:00",
+  "verdict": "桌面 PASS + 手机 PASS → READY FOR PRODUCTION RELEASE",
+  "completed_at": "2026-10-06T10:15:00+08:00",
+  "evaluation_result": {
+    "pytest": "171 passed (30.41s)",
+    "tsc": "0 error",
+    "eslint": "0 warnings / 0 errors",
+    "next_build": "12 routes, success",
+    "browser_qa": "45 combos: overflow 0, console error 0, touch violations 0, broken links 0",
+    "touch_targets": "0 violations at 390x844 across 9 pages (was 3)",
+    "citation_sheet": "panel 390x844 == viewport (widthRatio 1.00, heightRatio 1.00)",
+    "home_compression": "desktop 2895 -> 1172 px (-59.5%); mobile 6157 -> 2166 px (-64.8%)"
+  }
 }

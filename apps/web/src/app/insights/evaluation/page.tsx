@@ -5,11 +5,17 @@ import { useCallback, useState } from "react";
 
 import { StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { TD, TH, TR, Table } from "@/components/ui/data";
+import { CompactMetric, TD, TH, TR, Table } from "@/components/ui/data";
 import { Field, Input, Select } from "@/components/ui/field";
+import { PageIntro } from "@/components/ui/page-intro";
+import {
+  MainTaskBody,
+  MainTaskHeader,
+  MainTaskPanel,
+  ResultSection,
+  SectionAccordion,
+} from "@/components/ui/section";
 import { EmptyState, ErrorState, InlineError, InlineInfo, SkeletonRows } from "@/components/ui/states";
-import { StatCard } from "@/components/ui/data";
 import { useToast } from "@/components/providers/toast-provider";
 import { api, ApiError } from "@/lib/api";
 import { useAsync } from "@/lib/hooks";
@@ -21,6 +27,41 @@ const GRADES = [
   { value: "partial", label: "部分正确", tone: "warning" as const },
   { value: "wrong", label: "错误", tone: "danger" as const },
 ];
+
+const METRIC_HELP = [
+  {
+    label: "Hit@K",
+    plain: "前 K 条检索结果里，至少有一条是正确资料的比例。",
+    tech: "命中用例数 ÷ 有期望文档的用例数；没有期望文档的用例不计入。",
+  },
+  {
+    label: "MRR",
+    plain: "正确资料排得越靠前，分数越高。",
+    tech: "对每个用例取首个正确资料名次的倒数（1/rank），再对所有用例求平均。",
+  },
+  {
+    label: "Recall@K",
+    plain: "该被找出来的正确资料，有多大比例真的出现在前 K 条里。",
+    tech: "前 K 条命中的期望文档数 ÷ 期望文档总数，再对用例求平均。",
+  },
+  {
+    label: "关键词覆盖",
+    plain: "召回的片段覆盖了问题所要求关键词的比例。",
+    tech: "命中关键词数 ÷ 期望关键词总数；期望关键词为空时不计入。",
+  },
+];
+
+/**
+ * 用户结论，纯函数。
+ *
+ * 只用确定性指标 hit_at_k 计算，不调用模型、不写死整段文案；
+ * 阈值与页面其它地方保持一致（0.8 / 0.5）。
+ */
+function hitVerdict(hitAtK: number): string {
+  if (hitAtK >= 0.8) return "当前测试集中，大多数正确资料能够进入前 K 条结果。";
+  if (hitAtK >= 0.5) return "当前测试集中，约一半以上的正确资料能进入前 K 条结果。";
+  return "当前测试集中，正确资料进入前 K 条的比例偏低。";
+}
 
 export default function EvaluationPage() {
   const { toast } = useToast();
@@ -152,15 +193,19 @@ export default function EvaluationPage() {
 
   return (
     <div className="space-y-5">
-      <InlineInfo message="检索指标（Hit@K / MRR / Recall@K / 关键词覆盖）全部由确定性计算得出。答案准确率只在人工评分后才有数值，未评分时为 null —— 本项目不使用模型自评分数。" />
+      <PageIntro
+        title="RAG 评测"
+        subtitle="用固定测试集检验检索是否真的找到正确资料。选好参数运行一次，就能看到结果与结论。"
+      />
 
-      {/* ----------------------------------------------------------- runner */}
-      <Card>
-        <CardHeader
+      <InlineInfo message="检索指标（Hit@K / MRR / Recall@K / 关键词覆盖）全部由确定性计算得出；答案准确率只在人工评分后才有数值，本项目不使用模型自评分数。" />
+
+      {/* ----------------------------------------------------------- runner · 主任务 */}
+      <MainTaskPanel>
+        <MainTaskHeader
           title="运行检索评测"
           description="对评测数据集逐条执行检索，统计命中与排序质量"
           icon={<FlaskConical className="size-4" />}
-          dense
           actions={
             <>
               <Button
@@ -186,7 +231,7 @@ export default function EvaluationPage() {
             </>
           }
         />
-        <CardContent className="flex flex-wrap items-end gap-3">
+        <MainTaskBody className="flex flex-wrap items-end gap-3">
           <Field label="K 值" className="w-28">
             <Select value={String(k)} onChange={(event) => setK(Number(event.target.value))}>
               {[1, 2, 4, 6, 8, 10].map((value) => (
@@ -209,149 +254,195 @@ export default function EvaluationPage() {
               数据集共 {dataset.data.total} 条用例 · 存储于 {dataset.data.path}
             </p>
           ) : null}
-        </CardContent>
-      </Card>
+        </MainTaskBody>
+      </MainTaskPanel>
 
       {error ? <InlineError message={error} /> : null}
 
-      {/* ----------------------------------------------------------- metrics */}
+      {/* ----------------------------------------------------------- result */}
       {result ? (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <StatCard
-              label={`Hit@${result.summary.k}`}
-              value={formatPercent(result.summary.hit_at_k, 1)}
-              hint="期望文档进入 Top-K 的比例"
-              tone={result.summary.hit_at_k >= 0.8 ? "success" : "warning"}
-              icon={<Target className="size-4" />}
-            />
-            <StatCard
-              label="MRR"
-              value={result.summary.mrr.toFixed(3)}
-              hint="首个命中名次的倒数均值"
-              tone="accent"
-            />
-            <StatCard
-              label={`Recall@${result.summary.k}`}
-              value={formatPercent(result.summary.recall_at_k, 1)}
-              hint="期望文档被召回的比例"
-            />
-            <StatCard
-              label="关键词覆盖"
-              value={formatPercent(result.summary.keyword_coverage, 1)}
-              hint="召回片段覆盖问题关键词的比例"
-            />
-            <StatCard
-              label="答案准确率"
-              value={
-                result.summary.answer_accuracy === null
-                  ? "未评分"
-                  : formatPercent(result.summary.answer_accuracy, 1)
-              }
-              hint={`已人工评分 ${result.summary.graded_count} 条`}
-              tone={result.summary.answer_accuracy === null ? "warning" : "success"}
-            />
-          </div>
+          <ResultSection
+            label="评测结果"
+            meta={`模式 ${result.summary.mode} · ${result.summary.case_count} 条用例 · 平均检索耗时 ${formatMs(result.summary.average_latency_ms)}`}
+            icon={<Target className="size-4" />}
+          >
+            <div className="space-y-4">
+              <p className="text-sm leading-relaxed text-[var(--color-ink)]">
+                {hitVerdict(result.summary.hit_at_k)}
+              </p>
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                <CompactMetric
+                  label={`Hit@${result.summary.k}`}
+                  value={formatPercent(result.summary.hit_at_k, 1)}
+                  hint="正确资料进入前 K 条的比例"
+                  tone={
+                    result.summary.hit_at_k >= 0.8
+                      ? "success"
+                      : result.summary.hit_at_k >= 0.5
+                        ? "warning"
+                        : "danger"
+                  }
+                  icon={<Target className="size-3.5" />}
+                />
+                <CompactMetric
+                  label="MRR"
+                  value={result.summary.mrr.toFixed(3)}
+                  hint="首个命中名次的倒数均值"
+                  tone="accent"
+                />
+                <CompactMetric
+                  label={`Recall@${result.summary.k}`}
+                  value={formatPercent(result.summary.recall_at_k, 1)}
+                  hint="期望资料被召回的比例"
+                />
+              </div>
+            </div>
+          </ResultSection>
 
-          <Card>
-            <CardHeader
-              dense
-              title="逐条结果"
-              description={`模式 ${result.summary.mode} · 平均检索耗时 ${formatMs(result.summary.average_latency_ms)}`}
-            />
-            <CardContent>
-              <Table>
-                <thead>
-                  <tr>
-                    <TH>问题</TH>
-                    <TH>命中</TH>
-                    <TH align="right">名次</TH>
-                    <TH align="right">关键词覆盖</TH>
-                    <TH>缺失关键词</TH>
-                    <TH>失败归因</TH>
-                    <TH>人工评分</TH>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.cases.map((item) => (
-                    <TR key={item.case_id}>
-                      <TD>
-                        <span className="block max-w-[20rem] text-xs text-[var(--color-ink)]">
-                          {item.question}
-                        </span>
-                      </TD>
-                      <TD>
-                        <span className="inline-flex items-center gap-1.5">
-                          <StatusDot tone={item.hit_at_k ? "success" : "danger"} />
-                          <span className="text-xs">{item.hit_at_k ? "HIT" : "MISS"}</span>
-                        </span>
-                      </TD>
-                      <TD align="right" mono>
-                        {item.first_hit_rank ?? "—"}
-                      </TD>
-                      <TD align="right" mono>
-                        {formatPercent(item.keyword_coverage)}
-                      </TD>
-                      <TD>
-                        <span className="text-2xs text-[var(--color-ink-muted)]">
-                          {item.missing_keywords.slice(0, 4).join("、") || "—"}
-                        </span>
-                      </TD>
-                      <TD>
-                        <span className="text-2xs text-[var(--color-ink-muted)]">
-                          {item.failure_reason || "—"}
-                        </span>
-                      </TD>
-                      <TD>
-                        <span className="flex items-center gap-1">
-                          {GRADES.map((g) => (
-                            <button
-                              key={g.value}
-                              type="button"
-                              disabled={grading === item.case_id}
-                              onClick={() => void grade(item.case_id, g.value)}
-                              title={g.label}
-                              className={
-                                item.answer_grade === g.value
-                                  ? "rounded-[var(--radius-xs)] border border-[var(--color-accent-line)] bg-[var(--color-accent-soft)] px-1.5 py-0.5 text-2xs text-[var(--color-accent-ink)]"
-                                  : "rounded-[var(--radius-xs)] border border-[var(--color-line)] px-1.5 py-0.5 text-2xs text-[var(--color-ink-muted)] transition-colors hover:border-[var(--color-line-strong)] hover:text-[var(--color-ink)]"
-                              }
-                            >
-                              {g.label}
-                            </button>
-                          ))}
-                        </span>
-                      </TD>
-                    </TR>
-                  ))}
-                </tbody>
-              </Table>
-            </CardContent>
-          </Card>
+          <SectionAccordion
+            label="查看逐条评测结果"
+            description={`${result.cases.length} 条用例，可逐条做人工评分`}
+            icon={<Target className="size-4" />}
+          >
+            <Table>
+              <thead>
+                <tr>
+                  <TH>问题</TH>
+                  <TH>命中</TH>
+                  <TH align="right">名次</TH>
+                  <TH align="right">关键词覆盖</TH>
+                  <TH>缺失关键词</TH>
+                  <TH>失败归因</TH>
+                  <TH>人工评分</TH>
+                </tr>
+              </thead>
+              <tbody>
+                {result.cases.map((item) => (
+                  <TR key={item.case_id}>
+                    <TD>
+                      <span className="block max-w-[20rem] text-xs text-[var(--color-ink)]">
+                        {item.question}
+                      </span>
+                    </TD>
+                    <TD>
+                      <span className="inline-flex items-center gap-1.5">
+                        <StatusDot tone={item.hit_at_k ? "success" : "danger"} />
+                        <span className="text-xs">{item.hit_at_k ? "HIT" : "MISS"}</span>
+                      </span>
+                    </TD>
+                    <TD align="right" mono>
+                      {item.first_hit_rank ?? "—"}
+                    </TD>
+                    <TD align="right" mono>
+                      {formatPercent(item.keyword_coverage)}
+                    </TD>
+                    <TD>
+                      <span className="text-2xs text-[var(--color-ink-muted)]">
+                        {item.missing_keywords.slice(0, 4).join("、") || "—"}
+                      </span>
+                    </TD>
+                    <TD>
+                      <span className="text-2xs text-[var(--color-ink-muted)]">
+                        {item.failure_reason || "—"}
+                      </span>
+                    </TD>
+                    <TD>
+                      <span className="flex items-center gap-1">
+                        {GRADES.map((g) => (
+                          <button
+                            key={g.value}
+                            type="button"
+                            disabled={grading === item.case_id}
+                            onClick={() => void grade(item.case_id, g.value)}
+                            title={g.label}
+                            className={
+                              item.answer_grade === g.value
+                                ? "rounded-[var(--radius-xs)] border border-[var(--color-accent-line)] bg-[var(--color-accent-soft)] px-1.5 py-0.5 text-2xs text-[var(--color-accent-ink)]"
+                                : "rounded-[var(--radius-xs)] border border-[var(--color-line)] px-1.5 py-0.5 text-2xs text-[var(--color-ink-muted)] transition-colors hover:border-[var(--color-line-strong)] hover:text-[var(--color-ink)]"
+                            }
+                          >
+                            {g.label}
+                          </button>
+                        ))}
+                      </span>
+                    </TD>
+                  </TR>
+                ))}
+              </tbody>
+            </Table>
+          </SectionAccordion>
+
+          <SectionAccordion
+            label="查看其余指标（关键词覆盖 · 答案准确率）"
+            description="答案准确率只在人工评分后才有数值，未评分显示「未评分」"
+          >
+            <div className="grid grid-cols-2 gap-2.5">
+              <CompactMetric
+                label="关键词覆盖"
+                value={formatPercent(result.summary.keyword_coverage, 1)}
+                hint="召回片段覆盖问题关键词的比例"
+              />
+              <CompactMetric
+                label="答案准确率"
+                value={
+                  result.summary.answer_accuracy === null
+                    ? "未评分"
+                    : formatPercent(result.summary.answer_accuracy, 1)
+                }
+                hint={`已人工评分 ${result.summary.graded_count} 条`}
+                tone={result.summary.answer_accuracy === null ? "warning" : "success"}
+              />
+            </div>
+          </SectionAccordion>
         </>
       ) : (
         <EmptyState
           icon={<FlaskConical className="size-5" />}
           title="还没有运行结果"
-          description="点击「运行评测」对数据集执行一次检索评估。会输出 Hit@K、MRR、Recall@K 与关键词覆盖度，并可对每条结果做人工评分。"
+          description="选好 K 值与检索模式，点击「运行评测」对数据集执行一次检索评估。会输出 Hit@K、MRR、Recall@K 与关键词覆盖度，并可对每条结果做人工评分。"
         />
       )}
 
-      {/* ----------------------------------------------------------- dataset */}
-      <Card>
-        <CardHeader
-          title="评测数据集"
-          description="期望文档由文档名匹配生成；建议人工校准"
-          icon={<Target className="size-4" />}
-          dense
-          actions={
+      {/* ----------------------------------------------------------- 指标定义 · 折叠 */}
+      <SectionAccordion
+        label="查看指标定义"
+        description="Hit@K / MRR / Recall@K / 关键词覆盖 的通俗解释与技术定义"
+        icon={<Target className="size-4" />}
+      >
+        <dl className="space-y-3">
+          {METRIC_HELP.map((item) => (
+            <div key={item.label}>
+              <dt className="text-xs font-semibold text-[var(--color-ink)]">{item.label}</dt>
+              <dd className="mt-0.5 text-xs leading-relaxed text-[var(--color-ink-muted)]">
+                {item.plain}
+                <span className="mt-0.5 block text-2xs text-[var(--color-ink-faint)]">
+                  技术定义：{item.tech}
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </SectionAccordion>
+
+      {/* ----------------------------------------------------------- 数据集 · 折叠 */}
+      <SectionAccordion
+        label="查看完整评测数据集"
+        description={
+          dataset.status === "success"
+            ? `期望文档由文档名匹配生成，建议人工校准 · 共 ${dataset.data.total} 条`
+            : "期望文档由文档名匹配生成，建议人工校准"
+        }
+        icon={<Target className="size-4" />}
+      >
+        <div className="space-y-4">
+          <div className="flex justify-end">
             <Button size="sm" variant="ghost" onClick={reloadAll}>
               <RotateCcw className="size-3.5" />
               刷新
             </Button>
-          }
-        />
-        <CardContent className="space-y-4">
+          </div>
+
           <div className="flex flex-wrap items-end gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-3">
             <Field label="新增用例" className="min-w-[18rem] flex-1">
               <Input
@@ -430,75 +521,83 @@ export default function EvaluationPage() {
               </tbody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </SectionAccordion>
 
-      {/* ----------------------------------------------------------- history */}
-      <Card>
-        <CardHeader dense title="历史评测记录" description="最近 8 次运行" />
-        <CardContent>
-          {history.status === "success" && history.data.length > 0 ? (
-            <Table>
-              <thead>
-                <tr>
-                  <TH>时间</TH>
-                  <TH align="right">用例数</TH>
-                  <TH align="right">K</TH>
-                  <TH>模式</TH>
-                  <TH align="right">Hit@K</TH>
-                  <TH align="right">MRR</TH>
-                  <TH align="right">Recall</TH>
-                  <TH align="right">答案准确率</TH>
-                  <TH align="right">耗时</TH>
-                </tr>
-              </thead>
-              <tbody>
-                {history.data.map((run) => (
-                  <TR key={run.run_id}>
-                    <TD>
-                      <span className="text-2xs text-[var(--color-ink-muted)]">
-                        {run.started_at ? new Date(run.started_at).toLocaleString("zh-CN") : "—"}
-                      </span>
-                    </TD>
-                    <TD align="right" mono>
-                      {run.case_count}
-                    </TD>
-                    <TD align="right" mono>
-                      {run.k}
-                    </TD>
-                    <TD mono>{run.mode}</TD>
-                    <TD align="right" mono>
-                      {formatPercent(run.hit_at_k, 1)}
-                    </TD>
-                    <TD align="right" mono>
-                      {run.mrr.toFixed(3)}
-                    </TD>
-                    <TD align="right" mono>
-                      {formatPercent(run.recall_at_k, 1)}
-                    </TD>
-                    <TD align="right" mono>
-                      {run.answer_accuracy === null ? "—" : formatPercent(run.answer_accuracy, 1)}
-                    </TD>
-                    <TD align="right" mono>
-                      {formatMs(run.duration_ms)}
-                    </TD>
-                  </TR>
-                ))}
-              </tbody>
-            </Table>
-          ) : (
-            <p className="py-6 text-center text-xs text-[var(--color-ink-faint)]">
-              还没有历史记录。
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {/* ----------------------------------------------------------- 历史 · 折叠 */}
+      <SectionAccordion
+        label="查看历史运行"
+        description="最近 8 次运行的检索指标"
+        icon={<FlaskConical className="size-4" />}
+      >
+        {history.status === "success" && history.data.length > 0 ? (
+          <Table>
+            <thead>
+              <tr>
+                <TH>时间</TH>
+                <TH align="right">用例数</TH>
+                <TH align="right">K</TH>
+                <TH>模式</TH>
+                <TH align="right">Hit@K</TH>
+                <TH align="right">MRR</TH>
+                <TH align="right">Recall</TH>
+                <TH align="right">答案准确率</TH>
+                <TH align="right">耗时</TH>
+              </tr>
+            </thead>
+            <tbody>
+              {history.data.map((runItem) => (
+                <TR key={runItem.run_id}>
+                  <TD>
+                    <span className="text-2xs text-[var(--color-ink-muted)]">
+                      {runItem.started_at
+                        ? new Date(runItem.started_at).toLocaleString("zh-CN")
+                        : "—"}
+                    </span>
+                  </TD>
+                  <TD align="right" mono>
+                    {runItem.case_count}
+                  </TD>
+                  <TD align="right" mono>
+                    {runItem.k}
+                  </TD>
+                  <TD mono>{runItem.mode}</TD>
+                  <TD align="right" mono>
+                    {formatPercent(runItem.hit_at_k, 1)}
+                  </TD>
+                  <TD align="right" mono>
+                    {runItem.mrr.toFixed(3)}
+                  </TD>
+                  <TD align="right" mono>
+                    {formatPercent(runItem.recall_at_k, 1)}
+                  </TD>
+                  <TD align="right" mono>
+                    {runItem.answer_accuracy === null
+                      ? "—"
+                      : formatPercent(runItem.answer_accuracy, 1)}
+                  </TD>
+                  <TD align="right" mono>
+                    {formatMs(runItem.duration_ms)}
+                  </TD>
+                </TR>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <p className="py-6 text-center text-xs text-[var(--color-ink-faint)]">还没有历史记录。</p>
+        )}
+      </SectionAccordion>
 
-      <div className="flex items-center gap-2 text-2xs text-[var(--color-ink-faint)]">
-        <ThumbsUp className="size-3" />
-        <ThumbsDown className="size-3" />
-        <span>人工评分用于衡量「回答是否正确」，与检索指标分开统计，避免把两件事混为一谈。</span>
-      </div>
+      {/* ----------------------------------------------------------- 评分说明 · 折叠 */}
+      <SectionAccordion label="查看人工评分说明">
+        <div className="flex items-center gap-2 text-2xs text-[var(--color-ink-faint)]">
+          <ThumbsUp className="size-3" />
+          <ThumbsDown className="size-3" />
+          <span>
+            人工评分用于衡量「回答是否正确」，与检索指标分开统计，避免把两件事混为一谈。
+          </span>
+        </div>
+      </SectionAccordion>
     </div>
   );
 }

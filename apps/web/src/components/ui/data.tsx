@@ -53,6 +53,60 @@ export function StatCard({
   );
 }
 
+/**
+ * Dense metric tile for the compressed pages.
+ *
+ * `StatCard` stays for the places that genuinely want a big number; this one is
+ * for the summary strips that now sit above Search / Filter / List, where a row
+ * of large cards was the main reason pages ran long. Two columns on a phone by
+ * default, so a four-metric strip is two short rows rather than four tall ones.
+ */
+export function CompactMetric({
+  label,
+  value,
+  hint,
+  icon,
+  tone = "neutral",
+  className,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: React.ReactNode;
+  icon?: React.ReactNode;
+  tone?: "neutral" | "accent" | "success" | "warning" | "danger";
+  className?: string;
+}) {
+  const toneClass: Record<string, string> = {
+    neutral: "text-[var(--color-ink-faint)]",
+    accent: "text-[var(--color-accent)]",
+    success: "text-[var(--color-success)]",
+    warning: "text-[var(--color-warning)]",
+    danger: "text-[var(--color-danger)]",
+  };
+
+  return (
+    <div
+      className={cn(
+        "min-w-0 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2.5",
+        className,
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        {icon ? <span className={cn("shrink-0", toneClass[tone])}>{icon}</span> : null}
+        <p className="min-w-0 truncate text-2xs text-[var(--color-ink-faint)]">{label}</p>
+      </div>
+      <p className="mt-1 truncate text-lg font-semibold leading-tight tabular-nums text-[var(--color-ink)]">
+        {value}
+      </p>
+      {hint ? (
+        <p className="mt-0.5 truncate text-[10px] leading-tight text-[var(--color-ink-muted)]">
+          {hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------- bars */
 
 export function ProgressBar({

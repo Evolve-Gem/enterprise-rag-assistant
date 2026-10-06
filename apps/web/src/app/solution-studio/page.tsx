@@ -8,11 +8,17 @@ import { Markdown } from "@/components/rag/markdown";
 import { RetrievalPanel } from "@/components/rag/retrieval-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, DefRow, SectionLabel } from "@/components/ui/card";
+import { DefRow, SectionLabel } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { PageIntro, StepNote } from "@/components/ui/page-intro";
-import { EmptyState, InlineError, InlineWarning } from "@/components/ui/states";
-import { Tabs } from "@/components/ui/tabs";
+import {
+  MainTaskBody,
+  MainTaskHeader,
+  MainTaskPanel,
+  ResultSection,
+  SectionAccordion,
+} from "@/components/ui/section";
+import { InlineError, InlineWarning } from "@/components/ui/states";
 import { useToast } from "@/components/providers/toast-provider";
 import { api, ApiError } from "@/lib/api";
 import { useAsync, usePresetParam } from "@/lib/hooks";
@@ -41,17 +47,8 @@ const EXAMPLE = {
   } satisfies RequirementForm,
 };
 
-type Tab = "sections" | "analysis" | "evidence";
-
 /** Stated up front so the form is not a leap of faith. */
-const EXPECTED = [
-  "需求分析",
-  "推荐方案",
-  "实施路径",
-  "风险说明",
-  "参考依据",
-  "可导出 Markdown / Word",
-];
+const EXPECTED = ["需求分析", "推荐方案", "实施路径", "风险说明", "参考依据", "可导出 Markdown / Word"];
 
 export default function SolutionStudioPage() {
   const { toast } = useToast();
@@ -62,7 +59,6 @@ export default function SolutionStudioPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SolutionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("sections");
   const [exporting, setExporting] = useState<"markdown" | "docx" | null>(null);
 
   // `/solution-studio?requirement=…` from the home page: prefill only.
@@ -114,7 +110,10 @@ export default function SolutionStudioPage() {
         anchor.click();
         anchor.remove();
         URL.revokeObjectURL(url);
-        toast({ title: `已导出 ${format === "docx" ? "Word" : "Markdown"} 文件`, variant: "success" });
+        toast({
+          title: `已导出 ${format === "docx" ? "Word" : "Markdown"} 文件`,
+          variant: "success",
+        });
       } catch (caught) {
         toast({
           title: "导出失败",
@@ -129,133 +128,155 @@ export default function SolutionStudioPage() {
   );
 
   const analysis = result?.analysis;
+  const groundedSections = result?.sections.filter((section) => section.grounded).length ?? 0;
+  const hasOutput = loading || result !== null;
+
+  /** The requirement block, shared by the idle panel and the collapsed summary. */
+  const requirementFields = (
+    <>
+      <Textarea
+        rows={5}
+        value={requirement}
+        placeholder="用自然语言描述客户背景、场景与诉求…"
+        onChange={(event) => setRequirement(event.target.value)}
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setRequirement(EXAMPLE.requirement);
+            setForm(EXAMPLE.form);
+          }}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-accent-line)] bg-[var(--color-accent-soft)] px-3 text-xs text-[var(--color-accent-ink)] transition-colors hover:bg-[var(--color-accent-soft-hover)]"
+        >
+          <Lightbulb className="size-3.5" />
+          快速体验示例：职业院校知识库
+        </button>
+        <span className="text-[10px] text-[var(--color-ink-faint)]">只填入内容，不会自动生成</span>
+      </div>
+
+      <SectionAccordion
+        label="查看结构化需求字段"
+        description="可选：客户名称 / 行业 / 场景 / 痛点 / 需求 / 约束"
+        className="border-0 bg-transparent"
+        contentClassName="px-0"
+      >
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="客户名称">
+              <Input
+                value={form.customer}
+                placeholder="如：某职业院校"
+                onChange={(event) => updateForm("customer", event.target.value)}
+              />
+            </Field>
+            <Field label="所属行业">
+              <Input
+                value={form.industry}
+                placeholder="如：教育 / 零售 / 制造"
+                onChange={(event) => updateForm("industry", event.target.value)}
+              />
+            </Field>
+          </div>
+
+          <Field label="业务场景">
+            <Textarea
+              rows={2}
+              value={form.scenario}
+              placeholder="如：招生咨询、教务政策问答"
+              onChange={(event) => updateForm("scenario", event.target.value)}
+            />
+          </Field>
+
+          <Field label="主要痛点">
+            <Textarea
+              rows={2}
+              value={form.pain_points}
+              placeholder="如：政策文件分散、人工答疑重复"
+              onChange={(event) => updateForm("pain_points", event.target.value)}
+            />
+          </Field>
+
+          <Field label="核心需求">
+            <Textarea
+              rows={2}
+              value={form.requirements}
+              placeholder="如：统一知识库、回答可追溯"
+              onChange={(event) => updateForm("requirements", event.target.value)}
+            />
+          </Field>
+
+          <Field label="约束条件">
+            <Textarea
+              rows={2}
+              value={form.constraints}
+              placeholder="如：预算有限、私有化部署"
+              onChange={(event) => updateForm("constraints", event.target.value)}
+            />
+          </Field>
+        </div>
+      </SectionAccordion>
+    </>
+  );
+
+  const generateButton = (
+    <Button
+      variant="primary"
+      size="lg"
+      className="w-full"
+      loading={loading}
+      disabled={!requirement.trim() && !Object.values(form).some(Boolean)}
+      onClick={() => void generate()}
+    >
+      <Sparkles className="size-4" />
+      生成售前方案
+    </Button>
+  );
 
   return (
     <div className="space-y-5">
       <PageIntro
         title="方案生成"
         subtitle="输入客户需求，AI 会理解需求、检索相关企业知识，并生成带来源依据的结构化售前方案。"
-        aside={<Badge tone="neutral">需求 → 检索 → 8 章节方案</Badge>}
       />
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
-      {/* ----------------------------------------------------- intake form */}
-      <div className="space-y-4">
-        <Card>
-          <CardHeader
-            title="客户需求"
-            description="自然语言与结构化表单可任意组合，Agent 会自动解析为需求画像"
-            icon={<Wand2 className="size-4" />}
-            dense
-          />
-          <CardContent className="space-y-3">
-            <Textarea
-              rows={5}
-              value={requirement}
-              placeholder="用自然语言描述客户背景、场景与诉求…"
-              onChange={(event) => setRequirement(event.target.value)}
+      {!hasOutput ? (
+        /* ------------------------------------------------- IDLE: full width */
+        <>
+          <MainTaskPanel>
+            <MainTaskHeader
+              title="客户需求"
+              description="用一段话描述客户背景、场景与诉求即可"
+              icon={<Wand2 className="size-4" />}
             />
+            <MainTaskBody className="space-y-3">
+              {requirementFields}
 
-            <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-sunken)] px-3 py-2.5">
-              <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
-                快速体验示例
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setRequirement(EXAMPLE.requirement);
-                  setForm(EXAMPLE.form);
-                }}
-                className="mt-1.5 inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-accent-line)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-accent-ink)] transition-colors hover:bg-[var(--color-accent-soft)]"
-              >
-                <Lightbulb className="size-3.5" />
-                职业院校知识库
-              </button>
-              <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--color-ink-faint)]">
-                点击后自动填入预设需求，不会自动生成。
-              </p>
-            </div>
+              <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2.5">
+                <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
+                  你将得到
+                </p>
+                <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                  {EXPECTED.map((item) => (
+                    <li
+                      key={item}
+                      className="flex items-center gap-1.5 text-2xs text-[var(--color-ink-soft)]"
+                    >
+                      <CheckCircle2 className="size-3 shrink-0 text-[var(--color-success)]" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-            <div className="grid grid-cols-1 gap-3 border-t border-[var(--color-line-faint)] pt-3 sm:grid-cols-2">
-              <Field label="客户名称">
-                <Input
-                  value={form.customer}
-                  placeholder="如：某职业院校"
-                  onChange={(event) => updateForm("customer", event.target.value)}
-                />
-              </Field>
-              <Field label="所属行业">
-                <Input
-                  value={form.industry}
-                  placeholder="如：教育 / 零售 / 制造"
-                  onChange={(event) => updateForm("industry", event.target.value)}
-                />
-              </Field>
-            </div>
+              {generateButton}
+            </MainTaskBody>
+          </MainTaskPanel>
 
-            <Field label="业务场景">
-              <Textarea
-                rows={2}
-                value={form.scenario}
-                placeholder="如：招生咨询、教务政策问答"
-                onChange={(event) => updateForm("scenario", event.target.value)}
-              />
-            </Field>
+          {error ? <InlineError message={error} /> : null}
 
-            <Field label="主要痛点">
-              <Textarea
-                rows={2}
-                value={form.pain_points}
-                placeholder="如：政策文件分散、人工答疑重复"
-                onChange={(event) => updateForm("pain_points", event.target.value)}
-              />
-            </Field>
-
-            <Field label="核心需求">
-              <Textarea
-                rows={2}
-                value={form.requirements}
-                placeholder="如：统一知识库、回答可追溯"
-                onChange={(event) => updateForm("requirements", event.target.value)}
-              />
-            </Field>
-
-            <Field label="约束条件">
-              <Textarea
-                rows={2}
-                value={form.constraints}
-                placeholder="如：预算有限、私有化部署"
-                onChange={(event) => updateForm("constraints", event.target.value)}
-              />
-            </Field>
-
-            <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2.5">
-              <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
-                你将得到
-              </p>
-              <ul className="mt-1.5 grid grid-cols-1 gap-1 sm:grid-cols-2">
-                {EXPECTED.map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-center gap-1.5 text-2xs text-[var(--color-ink-soft)]"
-                  >
-                    <CheckCircle2 className="size-3 shrink-0 text-[var(--color-success)]" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <Button
-              variant="primary"
-              className="w-full"
-              loading={loading}
-              onClick={() => void generate()}
-            >
-              <Sparkles className="size-3.5" />
-              生成售前方案
-            </Button>
-
+          <SectionAccordion label="查看生成设置" description="模型 · 检索模式 · 引用上限">
             {config.status === "success" ? (
               <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-1">
                 <DefRow label="生成模型" mono>
@@ -268,45 +289,53 @@ export default function SolutionStudioPage() {
                   {config.data.rerank_top_k} 段
                 </DefRow>
               </div>
-            ) : null}
-          </CardContent>
-        </Card>
-      </div>
+            ) : (
+              <p className="text-xs text-[var(--color-ink-muted)]">正在读取生成配置…</p>
+            )}
+          </SectionAccordion>
+        </>
+      ) : (
+        /* ---------------------------------------------- RESULT: full width */
+        <>
+          {/* The input collapses to a single line. Expanding restores the whole
+              form so the requirement can be edited and regenerated in place. */}
+          <SectionAccordion
+            label="本次客户需求"
+            description={
+              requirement.trim()
+                ? requirement.trim().slice(0, 60) + (requirement.trim().length > 60 ? "…" : "")
+                : "使用结构化字段"
+            }
+            icon={<Wand2 className="size-4" />}
+          >
+            <div className="space-y-3">
+              {requirementFields}
+              {generateButton}
+            </div>
+          </SectionAccordion>
 
-      {/* ---------------------------------------------------------- output */}
-      <div className="min-w-0 space-y-4">
-        {error ? <InlineError message={error} /> : null}
+          {error ? <InlineError message={error} /> : null}
 
-        {loading ? (
-          <Card>
-            <CardContent className="flex items-center gap-5">
-              <KnowledgeMascot state="generating" size={72} />
-              <div className="space-y-1">
+          {loading && !result ? (
+            <div className="flex items-center gap-4 rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-4">
+              <KnowledgeMascot state="generating" size={56} />
+              <div className="min-w-0 space-y-1">
                 <p className="text-sm font-medium text-[var(--color-ink)]">正在生成售前方案…</p>
                 <p className="text-xs text-[var(--color-ink-muted)]">
-                  解析客户需求 → 检索方案资料 → 逐章节生成（8 个章节，全部标注引用）
+                  理解需求 → 检索企业知识 → 逐章节生成
                 </p>
               </div>
-            </CardContent>
-          </Card>
-        ) : null}
+            </div>
+          ) : null}
 
-        {!loading && !result ? (
-          <EmptyState
-            icon={<FileText className="size-5" />}
-            title="还没有生成方案"
-            description="填写左侧客户需求，或直接点「职业院校知识库」快速填入示例，然后点击「生成售前方案」。生成的方案包含 8 个标准章节，并在正文标注引用来源。"
-          />
-        ) : null}
-
-        {result ? (
-          <>
-            {/* meta strip */}
-            <Card>
-              <CardHeader
-                dense
-                title="方案概览"
-                description={`${result.sections.length} 个章节 · ${result.citations.length} 条引用 · ${formatMs(result.latency_ms)}`}
+          {result ? (
+            <>
+              {/* The plan gets the full reading width — eight sections in a
+                  2/3 column was the single worst readability problem. */}
+              <ResultSection
+                label="售前方案"
+                meta={`${result.sections.length} 章节 · ${result.citations.length} 引用 · ${formatMs(result.latency_ms)}`}
+                icon={<FileText className="size-4" />}
                 actions={
                   <>
                     <Button
@@ -329,98 +358,68 @@ export default function SolutionStudioPage() {
                     </Button>
                   </>
                 }
+              >
+                <div className="mb-4 flex flex-wrap items-center gap-1.5">
+                  <Badge tone="neutral">{analysis?.customer_type || "未提及客户类型"}</Badge>
+                  <Badge tone="neutral">{analysis?.industry || "未提及行业"}</Badge>
+                  <Badge tone={groundedSections === result.sections.length ? "success" : "warning"}>
+                    {groundedSections}/{result.sections.length} 章节带引用
+                  </Badge>
+                </div>
+
+                <div className="space-y-7">
+                  {result.sections.map((section) => (
+                    <section key={section.key}>
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <h3 className="text-[15px] font-semibold text-[var(--color-ink)]">
+                          {section.title}
+                        </h3>
+                        <Badge tone={section.grounded ? "success" : "warning"}>
+                          {section.grounded ? "含引用" : "无引用依据"}
+                        </Badge>
+                      </div>
+                      <Markdown content={section.content} />
+                    </section>
+                  ))}
+                </div>
+              </ResultSection>
+
+              {result.warnings.length > 0 ? (
+                <div className="space-y-2">
+                  {result.warnings.map((warning) => (
+                    <InlineWarning key={warning} message={warning} />
+                  ))}
+                </div>
+              ) : null}
+
+              <StepNote
+                label="本次方案生成过程"
+                steps={["理解需求", "提取检索问题", "检索企业知识", "组织方案", "添加引用"]}
+                detail={
+                  <p className="text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+                    方案共 <b className="font-mono">{result.sections.length}</b> 个章节，其中{" "}
+                    <b className="font-mono">{groundedSections}</b> 个章节带引用依据；使用{" "}
+                    <b className="font-mono">{result.retrieved_chunks.length}</b> 段知识库证据，
+                    正文引用 <b className="font-mono">{result.citations.length}</b> 处。
+                  </p>
+                }
               />
-              <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                <div>
-                  <p className="text-2xs text-[var(--color-ink-faint)]">客户类型</p>
-                  <p className="mt-0.5 text-sm text-[var(--color-ink)]">
-                    {analysis?.customer_type || "未提及"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-2xs text-[var(--color-ink-faint)]">行业</p>
-                  <p className="mt-0.5 text-sm text-[var(--color-ink)]">
-                    {analysis?.industry || "未提及"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-2xs text-[var(--color-ink-faint)]">需求解析来源</p>
-                  <p className="mt-0.5 text-sm text-[var(--color-ink)]">
-                    {analysis?.generated_by === "llm" ? "模型解析" : "规则提取"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-2xs text-[var(--color-ink-faint)]">溯源强度</p>
-                  <p className="mt-0.5 text-sm text-[var(--color-ink)]">
-                    {result.sections.filter((section) => section.grounded).length}/
-                    {result.sections.length} 章节带引用
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
 
-            <StepNote
-              label="本次方案生成过程"
-              steps={["理解需求", "提取检索问题", "检索企业知识", "组织方案", "添加引用"]}
-              detail={
-                <p className="text-2xs leading-relaxed text-[var(--color-ink-muted)]">
-                  方案共 <b className="font-mono">{result.sections.length}</b> 个章节，其中{" "}
-                  <b className="font-mono">
-                    {result.sections.filter((section) => section.grounded).length}
-                  </b>{" "}
-                  个章节带引用依据；使用{" "}
-                  <b className="font-mono">{result.retrieved_chunks.length}</b> 段知识库证据，
-                  正文引用 <b className="font-mono">{result.citations.length}</b> 处。
-                </p>
-              }
-            />
-
-            {result.warnings.length > 0 ? (
-              <div className="space-y-2">
-                {result.warnings.map((warning) => (
-                  <InlineWarning key={warning} message={warning} />
-                ))}
-              </div>
-            ) : null}
-
-            <Card>
-              <Tabs<Tab>
-                value={tab}
-                onChange={setTab}
-                className="px-3"
-                options={[
-                  { value: "sections", label: "方案正文", count: result.sections.length },
-                  { value: "analysis", label: "需求解析" },
-                  { value: "evidence", label: "引用证据", count: result.retrieved_chunks.length },
-                ]}
-              />
-              <CardContent>
-                {tab === "sections" ? (
-                  <div className="space-y-6">
-                    {result.sections.map((section) => (
-                      <section key={section.key}>
-                        <div className="mb-2 flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-[var(--color-ink)]">
-                            {section.title}
-                          </h3>
-                          <Badge tone={section.grounded ? "success" : "warning"}>
-                            {section.grounded ? "含引用" : "无引用依据"}
-                          </Badge>
-                        </div>
-                        <Markdown content={section.content} />
-                      </section>
-                    ))}
-                  </div>
-                ) : null}
-
-                {tab === "analysis" && analysis ? (
+              {analysis ? (
+                <SectionAccordion
+                  label="查看需求解析"
+                  description={`${analysis.core_needs.length} 条核心需求 · ${analysis.missing_info.length} 项待确认`}
+                >
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div className="space-y-3">
                       <div>
                         <SectionLabel>核心需求</SectionLabel>
                         <ul className="mt-1.5 space-y-1">
                           {analysis.core_needs.map((item) => (
-                            <li key={item} className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                            <li
+                              key={item}
+                              className="text-xs leading-relaxed text-[var(--color-ink-soft)]"
+                            >
                               · {item}
                             </li>
                           ))}
@@ -430,7 +429,10 @@ export default function SolutionStudioPage() {
                         <SectionLabel>主要痛点</SectionLabel>
                         <ul className="mt-1.5 space-y-1">
                           {analysis.pain_points.map((item) => (
-                            <li key={item} className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                            <li
+                              key={item}
+                              className="text-xs leading-relaxed text-[var(--color-ink-soft)]"
+                            >
                               · {item}
                             </li>
                           ))}
@@ -441,7 +443,10 @@ export default function SolutionStudioPage() {
                           <SectionLabel>约束条件</SectionLabel>
                           <ul className="mt-1.5 space-y-1">
                             {analysis.constraints.map((item) => (
-                              <li key={item} className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                              <li
+                                key={item}
+                                className="text-xs leading-relaxed text-[var(--color-ink-soft)]"
+                              >
                                 · {item}
                               </li>
                             ))}
@@ -461,7 +466,10 @@ export default function SolutionStudioPage() {
                         <SectionLabel>需要向客户确认</SectionLabel>
                         <ul className="mt-1.5 space-y-1">
                           {analysis.missing_info.map((item) => (
-                            <li key={item} className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                            <li
+                              key={item}
+                              className="text-xs leading-relaxed text-[var(--color-ink-soft)]"
+                            >
                               · {item}
                             </li>
                           ))}
@@ -473,32 +481,62 @@ export default function SolutionStudioPage() {
                           {analysis.search_query || "—"}
                         </p>
                       </div>
+                      <div>
+                        <SectionLabel>需求解析来源</SectionLabel>
+                        <p className="mt-1.5 text-xs text-[var(--color-ink-soft)]">
+                          {analysis.generated_by === "llm" ? "模型解析" : "规则提取"}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                ) : null}
+                </SectionAccordion>
+              ) : null}
 
-                {tab === "evidence" ? (
-                  <div className="space-y-3">
-                    <p className="text-2xs text-[var(--color-ink-muted)]">
-                      方案正文中的 <span className="font-mono">[n]</span> 编号即对应下列片段顺序。
-                      共引用 {result.citations.length} 处，来源{" "}
-                      {formatPercent(
-                        result.sources.length
-                          ? result.citations.length /
-                              Math.max(result.retrieved_chunks.length, 1)
-                          : 0,
-                      )}
-                      。
-                    </p>
-                    <RetrievalPanel chunks={result.retrieved_chunks} />
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          </>
-        ) : null}
-      </div>
-      </div>
+              <SectionAccordion
+                label="查看检索证据与引用详情"
+                description={`${result.retrieved_chunks.length} 段召回 · ${result.citations.length} 处引用`}
+              >
+                <p className="mb-3 text-2xs text-[var(--color-ink-muted)]">
+                  方案正文中的 <span className="font-mono">[n]</span> 编号即对应下列片段顺序。引用覆盖{" "}
+                  {formatPercent(
+                    result.citations.length / Math.max(result.retrieved_chunks.length, 1),
+                  )}
+                  。
+                </p>
+                <RetrievalPanel chunks={result.retrieved_chunks} />
+              </SectionAccordion>
+
+              <SectionAccordion label="查看生成技术过程" description="本次生成经过的 8 个节点">
+                <ol className="space-y-2">
+                  {result.trace.map((step) => (
+                    <li
+                      key={`${step.index}-${step.node}`}
+                      className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-2.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-accent-soft)] font-mono text-[10px] font-semibold text-[var(--color-accent-ink)]">
+                          {step.index}
+                        </span>
+                        <span className="min-w-0 truncate text-xs font-medium text-[var(--color-ink)]">
+                          {step.title}
+                        </span>
+                        <span className="ml-auto shrink-0 font-mono text-2xs text-[var(--color-ink-faint)]">
+                          {formatMs(step.duration_ms)}
+                        </span>
+                      </div>
+                      {step.summary ? (
+                        <p className="mt-1 pl-7 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+                          {step.summary}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ol>
+              </SectionAccordion>
+            </>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

@@ -24,7 +24,9 @@ import { KnowledgeMascot } from "@/components/mascot/knowledge-mascot";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, SectionLabel } from "@/components/ui/card";
-import { BarChart, Donut, StackedBar, StatCard } from "@/components/ui/data";
+import { BarChart, CompactMetric, Donut, StackedBar } from "@/components/ui/data";
+import { HeroPanel } from "@/components/ui/hero-panel";
+import { SectionAccordion } from "@/components/ui/section";
 import { EmptyState, ErrorState, SkeletonGrid } from "@/components/ui/states";
 import { api } from "@/lib/api";
 import { useAsync } from "@/lib/hooks";
@@ -40,6 +42,10 @@ import {
 
 /* ------------------------------------------------------------------ content */
 
+const ASK_EXAMPLE = "Rerank 在 RAG 检索链路里解决什么问题？";
+const AGENT_EXAMPLE = "帮我分析当前知识库还缺少哪些售前资料。";
+const SOLUTION_EXAMPLE = "某职业院校希望把招生政策、教务规定和学生事务答疑统一到一个知识库。";
+
 /** The three things a first-time visitor can actually accomplish. */
 const PRIMARY_ACTIONS = [
   {
@@ -47,7 +53,8 @@ const PRIMARY_ACTIONS = [
     english: "Ask",
     icon: MessageSquareText,
     title: "知识问答",
-    description: "向企业知识库提问，AI 会先检索资料，再基于真实证据回答。",
+    description: "向企业知识库提问，AI 先检索资料，再基于真实证据回答。",
+    short: "基于企业知识库提问，答案带来源",
     cta: "开始提问",
   },
   {
@@ -55,7 +62,8 @@ const PRIMARY_ACTIONS = [
     english: "Agent Workspace",
     icon: Workflow,
     title: "AI 任务",
-    description: "告诉 Agent 你想完成什么，它会自动识别任务并调用对应能力。",
+    description: "告诉 Agent 你想完成什么，它自动识别任务并调用对应能力。",
+    short: "描述目标，Agent 自动选择能力执行",
     cta: "运行 Agent",
   },
   {
@@ -64,22 +72,17 @@ const PRIMARY_ACTIONS = [
     icon: FileText,
     title: "方案生成",
     description: "输入客户需求，自动形成结构化、可溯源的售前方案。",
+    short: "输入客户需求，生成可溯源售前方案",
     cta: "生成方案",
   },
 ];
 
-const ASK_EXAMPLE = "Rerank 在 RAG 检索链路里解决什么问题？";
-const AGENT_EXAMPLE = "帮我分析当前知识库还缺少哪些售前资料。";
-const SOLUTION_EXAMPLE =
-  "某职业院校希望把招生政策、教务规定和学生事务答疑统一到一个知识库，希望减少重复人工解答，预算有限，计划先小范围试点。";
-
-/** Three independent entry points — deliberately not a chained tutorial. */
+/** One rail on desktop, a compact vertical flow on a phone. */
 const QUICK_START = [
   {
     step: "Step 1",
-    title: "问一个企业知识问题",
+    title: "问一个知识问题",
     example: ASK_EXAMPLE,
-    flow: ["检索企业知识", "筛选证据", "生成回答", "标注来源"],
     cta: "体验知识问答",
     href: `/ask?q=${encodeURIComponent(ASK_EXAMPLE)}`,
   },
@@ -87,7 +90,6 @@ const QUICK_START = [
     step: "Step 2",
     title: "让 Agent 完成一个任务",
     example: AGENT_EXAMPLE,
-    flow: ["任务理解", "意图识别", "选择能力", "调用工具", "执行结果"],
     cta: "体验 AI Agent",
     href: `/agent?task=${encodeURIComponent(AGENT_EXAMPLE)}`,
   },
@@ -95,41 +97,17 @@ const QUICK_START = [
     step: "Step 3",
     title: "生成一份售前方案",
     example: SOLUTION_EXAMPLE,
-    flow: ["需求解析", "检索企业知识", "组织章节", "标注引用"],
     cta: "体验方案生成",
     href: `/solution-studio?requirement=${encodeURIComponent(SOLUTION_EXAMPLE)}`,
   },
 ];
 
+/** Deliberately terse — the entry cards above already say what you can do. */
 const CAPABILITIES = [
-  {
-    icon: ShieldCheck,
-    english: "Grounded Q&A",
-    title: "可溯源知识问答",
-    description: "回答中的关键结论带有可点击来源，可以直接查看原始知识片段。",
-    href: "/ask",
-  },
-  {
-    icon: Workflow,
-    english: "Agent Execution",
-    title: "AI 任务执行",
-    description: "Agent 自动识别任务，选择业务能力并执行对应 Tool。",
-    href: "/agent",
-  },
-  {
-    icon: FileText,
-    english: "Solution Generation",
-    title: "售前方案生成",
-    description: "结合客户需求与企业知识，生成结构化解决方案。",
-    href: "/solution-studio",
-  },
-  {
-    icon: Search,
-    english: "Knowledge Insights",
-    title: "知识洞察",
-    description: "分析当前知识资产的覆盖情况，识别缺失资料并给出补充建议。",
-    href: "/insights/gaps",
-  },
+  { icon: ShieldCheck, title: "可溯源问答", description: "关键结论带可点击来源" },
+  { icon: Workflow, title: "任务执行", description: "Agent 自动选择能力与工具" },
+  { icon: FileText, title: "方案生成", description: "结合需求与企业知识产出" },
+  { icon: Search, title: "知识洞察", description: "看清覆盖了什么、缺什么" },
 ];
 
 const PIPELINE = ["企业资料", "知识检索", "证据筛选", "AI 生成", "可验证结果"];
@@ -147,11 +125,10 @@ const TECH_IMPL: [string, string][] = [
 
 export default function HomePage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Hero />
       <PrimaryActions />
       <QuickStart />
-      <Capabilities />
       <HowItWorks />
       <DemoStatus />
     </div>
@@ -162,82 +139,134 @@ export default function HomePage() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-6 sm:px-7 sm:py-8">
-      <div
-        className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full opacity-[0.07]"
-        style={{ background: "radial-gradient(circle, var(--color-accent) 0%, transparent 68%)" }}
-        aria-hidden
-      />
-      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 max-w-2xl">
-          <p className="text-2xs font-semibold tracking-[0.14em] text-[var(--color-accent)]">
-            ENTERPRISE RAG COPILOT
-          </p>
-          <h1 className="mt-2 text-2xl font-bold leading-snug tracking-tight text-[var(--color-ink)] sm:text-[28px]">
-            让企业知识从「文件堆」
-            <br className="hidden sm:block" />
-            变成可问、可查、可执行的 AI 工作台
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-[var(--color-ink-muted)]">
-            基于企业知识库，实现可溯源知识问答、AI Agent 任务执行与售前方案生成。
-          </p>
-
-          {/* Deliberately low visual weight: useful to a technical reader,
-              noise to everyone else. */}
-          <div className="mt-4 flex flex-wrap items-center gap-1.5">
-            <span className="text-2xs text-[var(--color-ink-faint)]">技术栈</span>
-            <Badge tone="neutral">Hybrid RAG</Badge>
-            <Badge tone="neutral">LangGraph</Badge>
-            <Badge tone="neutral">公开只读 Demo</Badge>
+    <HeroPanel
+      aside={
+        <div className="flex flex-row items-center gap-3 lg:flex-col lg:gap-2">
+          <div className="relative">
+            <div
+              aria-hidden
+              className="absolute inset-0 rounded-full opacity-40 blur-xl"
+              style={{
+                background: "radial-gradient(circle, var(--color-accent) 0%, transparent 70%)",
+              }}
+            />
+            <div className="animate-float relative">
+              <KnowledgeMascot state="idle" size={72} />
+            </div>
           </div>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)]/85 px-2.5 py-1 text-2xs text-[var(--color-ink-soft)] backdrop-blur">
+            <StatusDot tone="success" pulse />
+            AI Copilot 已就绪
+          </span>
         </div>
-        <div className="hidden shrink-0 lg:block">
-          <KnowledgeMascot state="idle" size={104} withLabel />
-        </div>
+      }
+    >
+      <p className="text-2xs font-semibold tracking-[0.14em] text-[var(--color-accent)]">
+        ENTERPRISE RAG COPILOT
+      </p>
+      <h1 className="mt-2 text-[26px] font-bold leading-snug tracking-tight text-[var(--color-ink)] sm:text-[30px]">
+        让企业知识从「文件堆」
+        <br className="hidden sm:block" />
+        <span className="sm:hidden"> </span>
+        变成可问、可查、可执行的 AI 工作台
+      </h1>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--color-ink-muted)]">
+        基于企业知识库，实现可溯源知识问答、AI Agent 任务执行与售前方案生成。
+      </p>
+
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Link href="/ask" className="sm:w-auto">
+          <Button variant="primary" size="lg" className="w-full sm:w-auto">
+            <MessageSquareText className="size-4" />
+            立即提问
+          </Button>
+        </Link>
+        <Link href="/agent" className="sm:w-auto">
+          <Button variant="outline" size="lg" className="w-full sm:w-auto">
+            <Workflow className="size-4" />
+            体验 AI Agent
+          </Button>
+        </Link>
       </div>
-    </section>
+
+      <div className="mt-4 flex flex-wrap items-center gap-1.5">
+        <Badge tone="neutral">Hybrid RAG</Badge>
+        <Badge tone="neutral">LangGraph</Badge>
+        <Badge tone="neutral">Citation</Badge>
+        <Badge tone="neutral">Public Read-only Demo</Badge>
+      </div>
+    </HeroPanel>
   );
 }
 
 /* ---------------------------------------------------------- primary actions */
 
-/**
- * The three primary entry points.
- *
- * Laid out as three equal cards on desktop and stacked on phones, because the
- * most common way in is a QR code scanned on a phone.
- */
 function PrimaryActions() {
   return (
-    <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      {PRIMARY_ACTIONS.map((action) => {
+    <>
+      {/* Phone: three Compact Action Rows (~76px each) so all three entries fit
+          the first screen. Not a shrunken card — one short line, no paragraph. */}
+      <section className="space-y-2 md:hidden">
+        {PRIMARY_ACTIONS.map((action) => {
+          const Icon = action.icon;
+          return (
+            <Link
+              key={`row-${action.href}`}
+              href={action.href}
+              className="flex min-h-[76px] items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 transition-colors duration-150 active:bg-[var(--color-accent-soft)]"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+                <Icon className="size-5" strokeWidth={2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold leading-tight text-[var(--color-ink)]">
+                  {action.title}
+                </span>
+                <span className="mt-0.5 block truncate text-2xs text-[var(--color-ink-muted)]">
+                  {action.short}
+                </span>
+              </span>
+              <ArrowRight className="size-4 shrink-0 text-[var(--color-ink-faint)]" />
+            </Link>
+          );
+        })}
+      </section>
+
+      {/* Desktop: the three entry cards. */}
+      <section className="hidden grid-cols-1 gap-3 md:grid md:grid-cols-3 md:gap-4">
+        {PRIMARY_ACTIONS.map((action) => {
         const Icon = action.icon;
         return (
           <Link
             key={action.href}
             href={action.href}
-            className="group flex flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-5 transition-colors duration-150 hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)]/40"
+            className="group flex min-h-11 items-center gap-3.5 rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 transition-colors duration-150 hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)]/40"
           >
-            <span className="flex size-10 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
               <Icon className="size-5" strokeWidth={2} />
             </span>
-            <span className="mt-3.5 flex items-baseline gap-2">
-              <span className="text-base font-semibold text-[var(--color-ink)]">
-                {action.title}
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-baseline gap-1.5">
+                <span className="text-[15px] font-semibold text-[var(--color-ink)]">
+                  {action.title}
+                </span>
+                <span className="hidden text-2xs text-[var(--color-ink-faint)] sm:inline">
+                  {action.english}
+                </span>
               </span>
-              <span className="text-2xs text-[var(--color-ink-faint)]">{action.english}</span>
-            </span>
-            <span className="mt-1.5 flex-1 text-sm leading-relaxed text-[var(--color-ink-muted)]">
-              {action.description}
-            </span>
-            <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-accent)]">
-              {action.cta}
-              <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" />
+              <span className="mt-1 block text-xs leading-relaxed text-[var(--color-ink-muted)]">
+                {action.description}
+              </span>
+              <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-accent)]">
+                {action.cta}
+                <ArrowRight className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
+              </span>
             </span>
           </Link>
-        );
-      })}
-    </section>
+          );
+        })}
+      </section>
+    </>
   );
 }
 
@@ -245,294 +274,238 @@ function PrimaryActions() {
 
 function QuickStart() {
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-5 sm:px-6">
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-          <Sparkles className="size-4" />
+    <section className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-4 sm:px-5">
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+          <Sparkles className="size-3.5" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-base font-semibold text-[var(--color-ink)]">
-            第一次来？3 分钟体验 Enterprise RAG Copilot
+          <h2 className="text-[15px] font-semibold text-[var(--color-ink)]">
+            第一次来？3 分钟体验
           </h2>
-          <p className="mt-1 text-sm leading-relaxed text-[var(--color-ink-muted)]">
-            不需要了解 RAG 或 Agent，跟着三个真实任务体验即可。三个入口互相独立，任选一个开始。
+          <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-ink-muted)]">
+            不需要了解 RAG 或 Agent，任选一步开始。只填入示例，不会自动提问。
           </p>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <ol className="mt-3.5 grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-3">
         {QUICK_START.map((item) => (
-          <div
+          <li
             key={item.step}
-            className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-canvas)] p-4"
+            className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-canvas)] p-3 transition-colors duration-150 hover:border-[var(--color-accent-line)]"
           >
-            <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-accent)]">
-              {item.step}
+            <div className="flex items-baseline gap-2">
+              <span className="shrink-0 text-2xs font-semibold tracking-[0.08em] text-[var(--color-accent)]">
+                {item.step}
+              </span>
+              <span className="min-w-0 truncate text-[13px] font-medium text-[var(--color-ink)]">
+                {item.title}
+              </span>
+            </div>
+            <p className="mt-1.5 line-clamp-2 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+              {item.example}
             </p>
-            <p className="mt-1.5 text-sm font-semibold text-[var(--color-ink)]">{item.title}</p>
-
-            <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2">
-              <p className="text-2xs text-[var(--color-ink-faint)]">示例</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-ink-soft)]">
-                {item.example}
-              </p>
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1">
-              {item.flow.map((step, index) => (
-                <span key={step} className="flex items-center gap-1.5">
-                  {index > 0 ? (
-                    <span aria-hidden className="text-[var(--color-ink-faint)]">
-                      →
-                    </span>
-                  ) : null}
-                  <span className="text-2xs text-[var(--color-ink-muted)]">{step}</span>
-                </span>
-              ))}
-            </div>
-
-            <Link href={item.href} className="mt-4 block">
+            <Link href={item.href} className="mt-2.5 block">
               <Button variant="outline" size="sm" className="w-full">
                 {item.cta}
                 <ArrowRight className="size-3.5" />
               </Button>
             </Link>
-            <p className="mt-2 text-center text-[10px] text-[var(--color-ink-faint)]">
-              只填入示例内容，不会自动提问
-            </p>
-          </div>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }
 
 /* ------------------------------------------------------------- capabilities */
 
-function Capabilities() {
+/**
+ * Renders the capability set as a tight strip.
+ *
+ * These four used to sit in their own section directly under three entry cards
+ * that already said 知识问答 / AI 任务 / 方案生成 — the same three things twice.
+ * Folding them in here keeps the information without paying a second block.
+ */
+function CapabilityStrip() {
   return (
-    <section className="space-y-3">
-      <SectionLabel>核心能力</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {CAPABILITIES.map((capability) => {
-          const Icon = capability.icon;
-          return (
-            <Link
-              key={capability.href}
-              href={capability.href}
-              className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 transition-colors duration-150 hover:border-[var(--color-line-strong)]"
-            >
-              <Icon className="size-4 text-[var(--color-accent)]" strokeWidth={2} />
-              <p className="mt-2.5 text-sm font-semibold text-[var(--color-ink)]">
-                {capability.title}
-              </p>
-              <p className="mt-1 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
-                {capability.description}
-              </p>
-              <p className="mt-2 text-[10px] text-[var(--color-ink-faint)]">
-                {capability.english}
-              </p>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
+    <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-[var(--color-line-faint)] pt-3 lg:grid-cols-4">
+      {CAPABILITIES.map((capability) => {
+        const Icon = capability.icon;
+        return (
+          <li key={capability.title} className="flex min-w-0 items-center gap-1.5">
+            <Icon className="size-3.5 shrink-0 text-[var(--color-accent)]" strokeWidth={2} />
+            <span className="min-w-0 truncate text-2xs text-[var(--color-ink-soft)]">
+              {capability.title}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
 /* ------------------------------------------------------------- how it works */
 
-/**
- * Product-level pipeline first, implementation second.
- *
- * A visitor reads "企业资料 → 知识检索 → …" and understands the shape of the
- * system; the engineering terms sit underneath for the reader who wants them.
- */
 function HowItWorks() {
   return (
-    <section className="space-y-3">
+    <section className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-4 sm:px-5">
       <SectionLabel>它是怎么工作的</SectionLabel>
-      <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-5 py-5 sm:px-6">
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-stretch lg:gap-0">
-          {PIPELINE.map((step, index) => (
-            <div key={step} className="flex flex-1 items-center gap-2 lg:flex-col lg:gap-3">
-              <div className="flex flex-1 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-canvas)] px-3 py-2.5 lg:w-full lg:flex-none">
-                <span className="text-xs font-medium text-[var(--color-ink)]">{step}</span>
-              </div>
-              {index < PIPELINE.length - 1 ? (
-                <span
-                  aria-hidden
-                  className="shrink-0 text-[var(--color-ink-faint)] lg:rotate-90"
-                >
-                  →
-                </span>
-              ) : null}
+
+      {/* Business layer stays visible: five words carry the whole product story. */}
+      <ol className="mt-3 flex flex-col gap-1.5 lg:flex-row lg:items-center">
+        {PIPELINE.map((step, index) => (
+          <li key={step} className="flex items-center gap-2 lg:flex-1 lg:flex-col lg:gap-2">
+            <span className="flex w-full items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-canvas)] px-2.5 py-2 text-xs font-medium text-[var(--color-ink)]">
+              {step}
+            </span>
+            {index < PIPELINE.length - 1 ? (
+              <span aria-hidden className="shrink-0 text-[var(--color-ink-faint)] lg:rotate-90">
+                →
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+
+      <CapabilityStrip />
+
+      {/* Implementation layer folds away — it is detail, not the story. */}
+      <SectionAccordion
+        label="查看技术实现"
+        description="资料解析 · 检索 · 融合 · 重排 · 生成 · 工作流"
+        className="mt-3 border-0 bg-transparent"
+        contentClassName="px-0"
+      >
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
+          {TECH_IMPL.map(([label, value]) => (
+            <div
+              key={label}
+              className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line-faint)] py-1 last:border-0"
+            >
+              <dt className="shrink-0 text-2xs text-[var(--color-ink-muted)]">{label}</dt>
+              <dd className="min-w-0 truncate text-right font-mono text-2xs text-[var(--color-ink-soft)]">
+                {value}
+              </dd>
             </div>
           ))}
-        </div>
-
-        <div className="mt-5 border-t border-[var(--color-line-faint)] pt-4">
-          <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
-            技术实现
-          </p>
-          <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
-            {TECH_IMPL.map(([label, value]) => (
-              <div
-                key={label}
-                className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line-faint)] py-1 last:border-0 sm:last:border-b"
-              >
-                <dt className="shrink-0 text-2xs text-[var(--color-ink-muted)]">{label}</dt>
-                <dd className="min-w-0 truncate text-right font-mono text-2xs text-[var(--color-ink-soft)]">
-                  {value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
+        </dl>
+      </SectionAccordion>
     </section>
   );
 }
 
 /* --------------------------------------------------------------- demo status */
 
-/** Live figures from the running instance — below the fold, never the headline. */
 function DemoStatus() {
   const overviewQuery = useAsync<OverviewResponse>(() => api.overview(), []);
 
-  if (overviewQuery.status === "loading") {
-    return (
-      <section className="space-y-3">
-        <SectionLabel>当前 Demo 状态</SectionLabel>
+  return (
+    <SectionAccordion
+      label="查看完整 Demo 状态"
+      description="实时指标 · 知识覆盖 · 资料分类 · 最近活动 · 最近文档与提问"
+      icon={<Gauge className="size-4" />}
+    >
+      {overviewQuery.status === "loading" ? (
         <SkeletonGrid count={4} />
-      </section>
-    );
-  }
-
-  if (overviewQuery.status === "error") {
-    return (
-      <section className="space-y-3">
-        <SectionLabel>当前 Demo 状态</SectionLabel>
+      ) : overviewQuery.status === "error" ? (
         <ErrorState error={overviewQuery.error} onRetry={overviewQuery.reload} compact />
-      </section>
-    );
-  }
+      ) : (
+        <DemoStatusBody overview={overviewQuery.data} />
+      )}
+    </SectionAccordion>
+  );
+}
 
-  const overview = overviewQuery.data;
+function DemoStatusBody({ overview }: { overview: OverviewResponse }) {
   const { knowledge, agent, rag, system } = overview;
 
   return (
-    <>
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <SectionLabel>当前 Demo 状态</SectionLabel>
-          <p className="text-2xs text-[var(--color-ink-faint)]">
-            以下数字全部来自运行中的实例，实时接口返回
-          </p>
+    <div className="space-y-4">
+      {!overview.data_available && overview.notes.length > 0 ? (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-warning-line)] bg-[var(--color-warning-soft)] px-4 py-3">
+          {overview.notes.map((note) => (
+            <p key={note} className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
+              {note}
+            </p>
+          ))}
         </div>
+      ) : null}
 
-        {!overview.data_available && overview.notes.length > 0 ? (
-          <div className="rounded-[var(--radius-lg)] border border-[var(--color-warning-line)] bg-[var(--color-warning-soft)] px-4 py-3">
-            {overview.notes.map((note) => (
-              <p key={note} className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
-                {note}
-              </p>
-            ))}
-          </div>
-        ) : null}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+        <CompactMetric
+          label="企业文档"
+          value={formatCount(knowledge.document_count)}
+          icon={<FileStack className="size-3.5" />}
+          tone="accent"
+        />
+        <CompactMetric
+          label="知识块"
+          value={formatCount(knowledge.chunk_count)}
+          icon={<Boxes className="size-3.5" />}
+        />
+        <CompactMetric
+          label="知识检索"
+          value={system.retriever_mode === "hybrid" ? "混合检索" : system.retriever_mode}
+          icon={<Search className="size-3.5" />}
+          tone="success"
+        />
+        <CompactMetric
+          label="Agent 运行"
+          value={formatCount(agent.run_count)}
+          hint={`成功率 ${formatPercent(agent.success_rate)}`}
+          icon={<Workflow className="size-3.5" />}
+        />
+        <CompactMetric
+          label="问答次数"
+          value={formatCount(rag.question_count)}
+          hint={`引用 ${formatCount(rag.citation_count)} 处`}
+          icon={<MessageSquareText className="size-3.5" />}
+        />
+        <CompactMetric
+          label="带来源回答"
+          value={formatPercent(rag.grounded_rate)}
+          icon={<ShieldCheck className="size-3.5" />}
+          tone={rag.grounded_rate >= 0.8 ? "success" : "warning"}
+        />
+        <CompactMetric
+          label="平均响应"
+          value={formatMs(rag.average_latency_ms)}
+          hint={`平均引用 ${rag.average_citations} 条`}
+          icon={<Gauge className="size-3.5" />}
+        />
+        <CompactMetric
+          label="业务能力"
+          value={agent.skill_count}
+          hint={`${agent.tool_count} 个可执行动作`}
+          icon={<Sparkles className="size-3.5" />}
+        />
+        <CompactMetric
+          label="执行引擎"
+          value={agent.engine === "langgraph" ? "LangGraph" : agent.engine}
+          icon={<Activity className="size-3.5" />}
+        />
+        <CompactMetric
+          label="最近索引"
+          value={formatRelative(knowledge.last_indexed_at)}
+          hint={system.embedding_provider === "hashing" ? "离线哈希向量" : system.embedding_provider}
+          icon={<Clock className="size-3.5" />}
+        />
+        <CompactMetric
+          label="检索模式"
+          value={system.retriever_mode}
+          hint={`${system.llm_provider} · ${system.llm_model}`}
+          icon={<Database className="size-3.5" />}
+        />
+        <CompactMetric
+          label="累计 Tool 调用"
+          value={formatCount(agent.tool_call_count)}
+          icon={<Cpu className="size-3.5" />}
+        />
+      </div>
 
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <StatCard
-            label="企业文档"
-            value={formatCount(knowledge.document_count)}
-            hint={`已索引 ${knowledge.indexed_document_count} 篇`}
-            icon={<FileStack className="size-4" />}
-            tone="accent"
-          />
-          <StatCard
-            label="知识块"
-            value={formatCount(knowledge.chunk_count)}
-            hint="按标题切分并保留章节路径"
-            icon={<Boxes className="size-4" />}
-          />
-          <StatCard
-            label="知识检索"
-            value={system.retriever_mode === "hybrid" ? "混合检索" : system.retriever_mode}
-            hint="关键词 + 向量 + 融合 + 重排"
-            icon={<Search className="size-4" />}
-            tone="success"
-          />
-          <StatCard
-            label="最近索引"
-            value={formatRelative(knowledge.last_indexed_at)}
-            hint={system.embedding_provider === "hashing" ? "离线哈希向量" : system.embedding_provider}
-            icon={<Clock className="size-4" />}
-          />
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <StatCard
-            label="Agent 运行"
-            value={formatCount(agent.run_count)}
-            hint={`成功率 ${formatPercent(agent.success_rate)}`}
-            icon={<Workflow className="size-4" />}
-            tone="accent"
-          />
-          <StatCard
-            label="业务能力"
-            value={agent.skill_count}
-            hint="每个能力组织一类业务流程"
-            icon={<Sparkles className="size-4" />}
-          />
-          <StatCard
-            label="可执行动作"
-            value={agent.tool_count}
-            hint={`累计调用 ${formatCount(agent.tool_call_count)} 次`}
-            icon={<Cpu className="size-4" />}
-          />
-          <StatCard
-            label="问答次数"
-            value={formatCount(rag.question_count)}
-            hint={`引用 ${formatCount(rag.citation_count)} 处`}
-            icon={<MessageSquareText className="size-4" />}
-          />
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <StatCard
-            label="平均响应"
-            value={formatMs(rag.average_latency_ms)}
-            hint={`平均引用 ${rag.average_citations} 条`}
-            icon={<Gauge className="size-4" />}
-          />
-          <StatCard
-            label="带来源回答比例"
-            value={formatPercent(rag.grounded_rate)}
-            hint="回答包含有效引用编号的比例"
-            icon={<ShieldCheck className="size-4" />}
-            tone={rag.grounded_rate >= 0.8 ? "success" : "warning"}
-          />
-          <StatCard
-            label="执行引擎"
-            value={agent.engine === "langgraph" ? "LangGraph" : agent.engine}
-            hint="与内置状态机共用同一套节点"
-            icon={<Activity className="size-4" />}
-          />
-          <StatCard
-            label="检索模式"
-            value={system.retriever_mode}
-            hint={`${system.llm_provider} · ${system.llm_model}`}
-            icon={<Database className="size-4" />}
-          />
-        </div>
-      </section>
-
-      {/* ------------------------------------------------- detail panels */}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card>
           <CardHeader
             title="知识覆盖"
@@ -568,24 +541,20 @@ function DemoStatus() {
                   ]}
                 />
                 <ul className="space-y-1 text-xs">
-                  <li className="flex items-center justify-between">
-                    <span className="text-[var(--color-ink-muted)]">已覆盖</span>
-                    <span className="font-mono tabular-nums text-[var(--color-ink)]">
-                      {String(overview.coverage_summary.covered ?? 0)}
-                    </span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span className="text-[var(--color-ink-muted)]">部分覆盖</span>
-                    <span className="font-mono tabular-nums text-[var(--color-ink)]">
-                      {String(overview.coverage_summary.partial ?? 0)}
-                    </span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span className="text-[var(--color-ink-muted)]">缺失</span>
-                    <span className="font-mono tabular-nums text-[var(--color-ink)]">
-                      {String(overview.coverage_summary.missing ?? 0)}
-                    </span>
-                  </li>
+                  {(
+                    [
+                      ["已覆盖", overview.coverage_summary.covered],
+                      ["部分覆盖", overview.coverage_summary.partial],
+                      ["缺失", overview.coverage_summary.missing],
+                    ] as const
+                  ).map(([label, value]) => (
+                    <li key={label} className="flex items-center justify-between">
+                      <span className="text-[var(--color-ink-muted)]">{label}</span>
+                      <span className="font-mono tabular-nums text-[var(--color-ink)]">
+                        {String(value ?? 0)}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -607,10 +576,7 @@ function DemoStatus() {
           />
           <CardContent>
             {Object.keys(knowledge.category_breakdown).length === 0 ? (
-              <EmptyState
-                title="暂无分类数据"
-                description="上传文档并重建索引后会显示分类分布。"
-              />
+              <EmptyState title="暂无分类数据" description="上传文档并重建索引后会显示分类分布。" />
             ) : (
               <BarChart
                 data={Object.entries(knowledge.category_breakdown)
@@ -663,7 +629,8 @@ function DemoStatus() {
                       {item.title}
                     </p>
                     <p className="text-2xs text-[var(--color-ink-faint)]">
-                      {ACTIVITY_KIND_LABELS[item.kind] ?? item.kind} · {formatRelative(item.created_at)}
+                      {ACTIVITY_KIND_LABELS[item.kind] ?? item.kind} ·{" "}
+                      {formatRelative(item.created_at)}
                       {item.latency_ms ? ` · ${formatMs(item.latency_ms)}` : ""}
                     </p>
                   </div>
@@ -674,8 +641,7 @@ function DemoStatus() {
         </Card>
       </div>
 
-      {/* ------------------------------------------- recent documents row */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader
             title="最近更新的文档"
@@ -693,19 +659,24 @@ function DemoStatus() {
           />
           <CardContent className="space-y-1">
             {overview.recent_documents.length === 0 ? (
-              <EmptyState title="知识库为空" description="上传 Markdown / PDF / Word 文档后开始使用。" />
+              <EmptyState
+                title="知识库为空"
+                description="上传 Markdown / PDF / Word 文档后开始使用。"
+              />
             ) : (
               overview.recent_documents.map((doc) => (
                 <Link
                   key={doc.id}
                   href={`/knowledge/explorer?doc=${encodeURIComponent(doc.id)}`}
-                  className="flex items-center gap-3 rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--color-surface-sunken)]"
+                  className="flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] px-2 py-1.5 transition-colors hover:bg-[var(--color-surface-sunken)]"
                 >
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-surface-sunken)] text-[var(--color-ink-faint)]">
                     <FileStack className="size-3.5" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs text-[var(--color-ink)]">{doc.name}</span>
+                    <span className="block truncate text-xs text-[var(--color-ink)]">
+                      {doc.name}
+                    </span>
                     <span className="block text-2xs text-[var(--color-ink-faint)]">
                       {doc.category} · {doc.chunks} 个知识块
                     </span>
@@ -745,7 +716,10 @@ function DemoStatus() {
                   className="flex items-start gap-3 rounded-[var(--radius-md)] px-2 py-2"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs text-[var(--color-ink-soft)]" title={item.title}>
+                    <span
+                      className="block truncate text-xs text-[var(--color-ink-soft)]"
+                      title={item.title}
+                    >
                       {item.title}
                     </span>
                     <span className="block text-2xs text-[var(--color-ink-faint)]">
@@ -760,6 +734,6 @@ function DemoStatus() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   );
 }

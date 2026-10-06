@@ -1,10 +1,11 @@
 "use client";
 
-import { Cpu, Database, FileCode2, ShieldCheck, Sliders, Sparkles } from "lucide-react";
+import { Cpu, Database, FileCode2, HardDrive, ShieldCheck, Sliders, Sparkles } from "lucide-react";
 
 import { Badge, CodeChip, StatusDot } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, DefRow, SectionLabel } from "@/components/ui/card";
-import { ErrorState, SkeletonRows } from "@/components/ui/states";
+import { SectionAccordion } from "@/components/ui/section";
+import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
 import { api } from "@/lib/api";
 import { useAsync } from "@/lib/hooks";
 import type { SettingsResponse, SystemStatus } from "@/lib/types";
@@ -156,140 +157,150 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* ----------------------------------------------------------- agent */}
-      <Card>
-        <CardHeader
-          title="Agent 与运行时"
-          description="引擎、步数上限与观测配置"
-          icon={<Cpu className="size-4" />}
-          dense
-        />
-        <CardContent>
-          <DefRow label="生效引擎">
-            <Badge tone="accent">{s.agent.engine}</Badge>
-          </DefRow>
-          <DefRow label="配置值" mono>
-            {s.agent.requested_engine}
-          </DefRow>
-          <DefRow label="LangGraph 可用">
-            {s.runtime.langgraph_available ? (
-              <Badge tone="success">是</Badge>
-            ) : (
-              <Badge tone="warning">否（回退原生状态机）</Badge>
-            )}
-          </DefRow>
-          <DefRow label="最大执行步数" mono>
-            {s.agent.max_steps}
-          </DefRow>
-          <DefRow label="Human Check 默认">
-            {s.agent.human_check_required ? "开启" : "关闭"}
-          </DefRow>
-          <div className="mt-3 border-t border-[var(--color-line-faint)] pt-3">
-            <SectionLabel>活动台账</SectionLabel>
-            <DefRow label="是否启用">{s.observability.activity_enabled ? "是" : "否"}</DefRow>
-            <DefRow label="后端" mono>
-              {s.observability.activity_backend}
-            </DefRow>
-            <DefRow label="最大记录数" mono>
-              {s.observability.max_records}
-            </DefRow>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ------------------------------------------------------ guardrails */}
-      <Card>
-        <CardHeader
-          title="演示保护与上传限制"
-          description="DEMO_PASSWORD / DEMO_READ_ONLY / 上传白名单"
-          icon={<ShieldCheck className="size-4" />}
-          dense
-        />
-        <CardContent>
-          <DefRow label="访问密码">
-            {s.guard_rails.password_required ? (
-              <Badge tone="success">已启用</Badge>
-            ) : (
-              <Badge tone="neutral">未启用</Badge>
-            )}
-          </DefRow>
-          <DefRow label="只读模式">
-            {s.guard_rails.read_only ? (
-              <Badge tone="warning">已锁定写操作</Badge>
-            ) : (
-              <Badge tone="neutral">写操作开放</Badge>
-            )}
-          </DefRow>
-          <DefRow label="上传大小上限">{formatBytes(s.uploads.max_bytes)}</DefRow>
-          <DefRow label="允许的扩展名">
-            <span className="flex flex-wrap justify-end gap-1">
-              {s.uploads.allowed_suffixes.map((suffix) => (
-                <CodeChip key={suffix}>{suffix}</CodeChip>
-              ))}
-            </span>
-          </DefRow>
-          <div className="mt-3 border-t border-[var(--color-line-faint)] pt-3">
-            <SectionLabel>存储路径</SectionLabel>
-            <DefRow label="知识库" mono>
-              {s.storage.knowledge_base}
-            </DefRow>
-            <DefRow label="Prompt 目录" mono>
-              {s.storage.prompts}
-            </DefRow>
-            <DefRow label="运行时数据" mono>
-              {s.storage.data}
-            </DefRow>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* --------------------------------------------------------- prompts */}
-      <Card className="xl:col-span-2">
-        <CardHeader
-          title="Prompt 模板与版本"
-          description={`运行时从 prompts/${s.storage.prompt_version}/ 加载，不在代码里硬编码`}
-          icon={<FileCode2 className="size-4" />}
-          dense
-          actions={<Badge tone="accent">version {s.storage.prompt_version}</Badge>}
-        />
-        <CardContent>
-          {prompts.status === "loading" ? (
-            <SkeletonRows count={5} />
-          ) : prompts.status === "error" ? (
-            <ErrorState error={prompts.error} onRetry={prompts.reload} compact />
+      {/* ------------------------------------------------ agent (collapsed) */}
+      <SectionAccordion
+        label="查看 Agent 与运行时"
+        description="引擎、步数上限与观测配置"
+        icon={<Cpu className="size-4" />}
+        className="xl:col-span-2"
+      >
+        <DefRow label="生效引擎">
+          <Badge tone="accent">{s.agent.engine}</Badge>
+        </DefRow>
+        <DefRow label="配置值" mono>
+          {s.agent.requested_engine}
+        </DefRow>
+        <DefRow label="LangGraph 可用">
+          {s.runtime.langgraph_available ? (
+            <Badge tone="success">是</Badge>
           ) : (
-            <div className="space-y-1.5">
-              {prompts.data.items.map((prompt) => (
-                <div
-                  key={prompt.name}
-                  className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-2.5"
-                >
-                  <CodeChip>{prompt.name}</CodeChip>
-                  <Badge tone="neutral">v{prompt.version}</Badge>
-                  <span className="min-w-0 flex-1 text-2xs text-[var(--color-ink-muted)]">
-                    {prompt.description || "—"}
-                  </span>
-                  <span className="flex flex-wrap gap-1">
-                    {prompt.placeholders.map((placeholder) => (
-                      <span
-                        key={placeholder}
-                        className="rounded-[var(--radius-xs)] bg-[var(--color-surface-sunken)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-ink-faint)]"
-                      >
-                        {`{{${placeholder}}}`}
-                      </span>
-                    ))}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <Badge tone="warning">否（回退原生状态机）</Badge>
           )}
-        </CardContent>
-      </Card>
+        </DefRow>
+        <DefRow label="最大执行步数" mono>
+          {s.agent.max_steps}
+        </DefRow>
+        <DefRow label="Human Check 默认">
+          {s.agent.human_check_required ? "开启" : "关闭"}
+        </DefRow>
+        <div className="mt-3 border-t border-[var(--color-line-faint)] pt-3">
+          <SectionLabel>活动台账</SectionLabel>
+          <DefRow label="是否启用">{s.observability.activity_enabled ? "是" : "否"}</DefRow>
+          <DefRow label="后端" mono>
+            {s.observability.activity_backend}
+          </DefRow>
+          <DefRow label="最大记录数" mono>
+            {s.observability.max_records}
+          </DefRow>
+        </div>
+      </SectionAccordion>
 
-      {/* ----------------------------------------------------------- about */}
-      <Card className="xl:col-span-2">
-        <CardHeader title="关于" icon={<Database className="size-4" />} dense />
-        <CardContent className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+      {/* ------------------------------------------- guardrails (collapsed) */}
+      <SectionAccordion
+        label="查看演示保护与上传限制"
+        description="DEMO_PASSWORD / DEMO_READ_ONLY / 上传白名单"
+        icon={<ShieldCheck className="size-4" />}
+        className="xl:col-span-2"
+      >
+        <DefRow label="访问密码">
+          {s.guard_rails.password_required ? (
+            <Badge tone="success">已启用</Badge>
+          ) : (
+            <Badge tone="neutral">未启用</Badge>
+          )}
+        </DefRow>
+        <DefRow label="只读模式">
+          {s.guard_rails.read_only ? (
+            <Badge tone="warning">已锁定写操作</Badge>
+          ) : (
+            <Badge tone="neutral">写操作开放</Badge>
+          )}
+        </DefRow>
+        <DefRow label="上传大小上限">{formatBytes(s.uploads.max_bytes)}</DefRow>
+        <DefRow label="允许的扩展名">
+          <span className="flex flex-wrap justify-end gap-1">
+            {s.uploads.allowed_suffixes.map((suffix) => (
+              <CodeChip key={suffix}>{suffix}</CodeChip>
+            ))}
+          </span>
+        </DefRow>
+      </SectionAccordion>
+
+      {/* ---------------------------------------------- storage (collapsed) */}
+      <SectionAccordion
+        label="查看存储路径"
+        description="知识库、Prompt 目录与运行时数据的实际位置"
+        icon={<HardDrive className="size-4" />}
+        className="xl:col-span-2"
+      >
+        <DefRow label="知识库" mono>
+          {s.storage.knowledge_base}
+        </DefRow>
+        <DefRow label="Prompt 目录" mono>
+          {s.storage.prompts}
+        </DefRow>
+        <DefRow label="运行时数据" mono>
+          {s.storage.data}
+        </DefRow>
+      </SectionAccordion>
+
+      {/* ----------------------------------------------- prompts (collapsed) */}
+      <SectionAccordion
+        label="查看 Prompt 模板与版本"
+        description={`运行时从 prompts/${s.storage.prompt_version}/ 加载，不在代码里硬编码`}
+        icon={<FileCode2 className="size-4" />}
+        className="xl:col-span-2"
+      >
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-[var(--color-ink-muted)]">运行时加载的模板清单</p>
+          <Badge tone="accent">version {s.storage.prompt_version}</Badge>
+        </div>
+        {prompts.status === "loading" ? (
+          <SkeletonRows count={5} />
+        ) : prompts.status === "error" ? (
+          <ErrorState error={prompts.error} onRetry={prompts.reload} compact />
+        ) : prompts.data.items.length === 0 ? (
+          <EmptyState
+            icon={<FileCode2 className="size-5" />}
+            title="没有可用的 Prompt 模板"
+            description="后端未从 prompts 目录加载到任何模板，请确认目录内容后重试。"
+          />
+        ) : (
+          <div className="space-y-1.5">
+            {prompts.data.items.map((prompt) => (
+              <div
+                key={prompt.name}
+                className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-2.5"
+              >
+                <CodeChip>{prompt.name}</CodeChip>
+                <Badge tone="neutral">v{prompt.version}</Badge>
+                <span className="min-w-0 flex-1 text-2xs text-[var(--color-ink-muted)]">
+                  {prompt.description || "—"}
+                </span>
+                <span className="flex flex-wrap gap-1">
+                  {prompt.placeholders.map((placeholder) => (
+                    <span
+                      key={placeholder}
+                      className="rounded-[var(--radius-xs)] bg-[var(--color-surface-sunken)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-ink-faint)]"
+                    >
+                      {`{{${placeholder}}}`}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionAccordion>
+
+      {/* ------------------------------------------------- about (collapsed) */}
+      <SectionAccordion
+        label="查看版本与运行时"
+        description="产品版本、运行环境与索引统计"
+        icon={<Database className="size-4" />}
+        className="xl:col-span-2"
+      >
+        <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
           <div>
             <DefRow label="产品">{s.app.name}</DefRow>
             <DefRow label="版本" mono>
@@ -328,8 +339,8 @@ export default function SettingsPage() {
               缓存命中 {formatPercent(status.data.index.from_cache ? 1 : 0)}
             </p>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </SectionAccordion>
     </div>
   );
 }

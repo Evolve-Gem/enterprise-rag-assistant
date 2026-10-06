@@ -4,11 +4,12 @@ import { Compass, FileStack, Layers, Search, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Markdown } from "@/components/rag/markdown";
-import { RetrievalPanel } from "@/components/rag/retrieval-panel";
+import { RetrievalFunnel } from "@/components/rag/retrieval-panel";
 import { Badge, CodeChip } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, DefRow, SectionLabel } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
+import { SectionAccordion } from "@/components/ui/section";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
 import { Tabs } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
@@ -86,7 +87,7 @@ export default function ExplorerPage() {
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)_minmax(0,26rem)]">
       {/* ------------------------------------------------- document list */}
-      <Card className="flex max-h-[calc(100dvh-7rem)] min-h-0 flex-col">
+      <Card className="flex max-h-[calc(100dvh-7rem)] min-h-0 min-w-0 flex-col">
         <CardHeader
           dense
           title="文档"
@@ -338,13 +339,8 @@ export default function ExplorerPage() {
                 ) : null}
 
                 {probeStats ? (
-                  <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2">
-                    <DefRow label="检索模式">{probeStats.mode}</DefRow>
-                    <DefRow label="候选池">{probeStats.candidate_count}</DefRow>
-                    <DefRow label="关键词命中">{probeStats.keyword_hits}</DefRow>
-                    <DefRow label="向量命中">{probeStats.vector_hits}</DefRow>
-                    <DefRow label="融合策略">{probeStats.fusion_strategy}</DefRow>
-                    <DefRow label="重排保留">{probeStats.after_rerank}</DefRow>
+                  <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2.5">
+                    <RetrievalFunnel stats={probeStats} />
                   </div>
                 ) : null}
 
@@ -354,7 +350,15 @@ export default function ExplorerPage() {
                       命中 {probeChunks.length} 段，Top-1 重排分{" "}
                       {formatPercent(probeChunks[0].rerank_score ?? probeChunks[0].fused_score, 1)}
                     </p>
-                    <RetrievalPanel chunks={probeChunks} />
+                    <div className="space-y-2">
+                      {probeChunks.map((chunk, index) => (
+                        <ProbeResult
+                          key={chunk.chunk_id}
+                          chunk={chunk}
+                          rank={chunk.rank_final ?? index + 1}
+                        />
+                      ))}
+                    </div>
                   </>
                 ) : probeStats ? (
                   <p className="py-4 text-center text-xs text-[var(--color-ink-faint)]">
@@ -369,6 +373,96 @@ export default function ExplorerPage() {
             )}
           </div>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One retrieval hit at default density.
+ *
+ * The default view answers "what matched and how well" — title, section, the
+ * single score that decided the order, and the snippet. The per-branch scores
+ * (BM25 / vector / fusion / rerank) and the raw chunk metadata are real but
+ * secondary, so they sit behind the collapsed "查看检索详情" header instead of
+ * being spread across every row.
+ */
+function ProbeResult({ chunk, rank }: { chunk: RetrievedChunk; rank: number }) {
+  const summary = chunk.rerank_score ?? chunk.fused_score;
+  const ranks: [string, number | null][] = [
+    ["关键词", chunk.rank_keyword],
+    ["向量", chunk.rank_vector],
+    ["融合", chunk.rank_fused],
+    ["最终", chunk.rank_final],
+  ];
+
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-3">
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-surface-sunken)] font-mono text-[11px] font-semibold text-[var(--color-ink-muted)]">
+          {rank}
+        </span>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-ink)]"
+              title={chunk.document_name}
+            >
+              {chunk.document_name}
+            </span>
+            <Badge tone="accent">
+              {chunk.rerank_score !== null ? "重排分" : "融合分"} {formatPercent(summary, 1)}
+            </Badge>
+          </div>
+
+          <p className="truncate text-2xs text-[var(--color-ink-muted)]" title={chunk.section}>
+            {chunk.section || "（无章节）"}
+          </p>
+
+          <p className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
+            {truncate(chunk.preview || chunk.content, 180)}
+          </p>
+
+          <SectionAccordion
+            label="查看检索详情"
+            description="BM25 / 向量 / 融合 / 重排分数与原始知识块信息"
+            className="mt-1"
+          >
+            <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+              <div>
+                <DefRow label="关键词分（BM25）">{chunk.keyword_score.toFixed(4)}</DefRow>
+                <DefRow label="向量分">{chunk.vector_score.toFixed(4)}</DefRow>
+                <DefRow label="融合分（RRF）">{chunk.fused_score.toFixed(4)}</DefRow>
+                <DefRow label="重排分">
+                  {chunk.rerank_score !== null ? chunk.rerank_score.toFixed(4) : "—"}
+                </DefRow>
+              </div>
+              <div>
+                <DefRow label="命中分支">
+                  {chunk.found_by.length ? chunk.found_by.join(" + ") : "—"}
+                </DefRow>
+                <DefRow label="匹配词">
+                  {chunk.matched_terms.length ? chunk.matched_terms.join("、") : "—"}
+                </DefRow>
+                <DefRow label="知识块 ID" mono>
+                  {chunk.chunk_id}
+                </DefRow>
+                <DefRow label="文档内序号 / 字符数">
+                  {`#${chunk.index} · ${chunk.char_count} 字`}
+                </DefRow>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <span className="text-2xs text-[var(--color-ink-faint)]">各阶段排名</span>
+              {ranks.map(([label, value]) => (
+                <Badge key={label} tone="neutral">
+                  {label} {value === null ? "—" : `#${value}`}
+                </Badge>
+              ))}
+            </div>
+          </SectionAccordion>
+        </div>
       </div>
     </div>
   );

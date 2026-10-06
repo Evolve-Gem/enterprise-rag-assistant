@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Filter, Gauge, RefreshCw, ShieldCheck } from "lucide-react";
+import { Activity, ChartColumn, Filter, Gauge, RefreshCw, ShieldCheck } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { Badge, CodeChip, StatusDot } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { BarChart, StatCard, TD, TH, TR, Table } from "@/components/ui/data";
 import { Field, Select } from "@/components/ui/field";
+import { SectionAccordion } from "@/components/ui/section";
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
 import { useToast } from "@/components/providers/toast-provider";
 import { api } from "@/lib/api";
@@ -46,36 +47,43 @@ export default function ActivityPage() {
     <div className="space-y-5">
       {/* ------------------------------------------------------------ stats */}
       {stats.status === "success" ? (
-        <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              label="总记录"
-              value={stats.data.total}
-              hint={`存储后端 ${stats.data.backend}`}
-              icon={<Activity className="size-4" />}
-              tone="accent"
-            />
-            <StatCard
-              label="成功率"
-              value={formatPercent(stats.data.success_rate, 1)}
-              hint={`失败 ${stats.data.failure_count} 次`}
-              icon={<ShieldCheck className="size-4" />}
-              tone={stats.data.failure_count === 0 ? "success" : "warning"}
-            />
-            <StatCard
-              label="平均延迟"
-              value={formatMs(stats.data.average_latency_ms)}
-              hint={stats.data.last_activity_at ? `最近 ${formatRelative(stats.data.last_activity_at)}` : "—"}
-              icon={<Gauge className="size-4" />}
-            />
-            <StatCard
-              label="P95 延迟"
-              value={formatMs(stats.data.p95_latency_ms)}
-              hint="长尾指标，反映最慢的一批请求"
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="总记录"
+            value={stats.data.total}
+            hint={`存储后端 ${stats.data.backend}`}
+            icon={<Activity className="size-4" />}
+            tone="accent"
+          />
+          <StatCard
+            label="成功率"
+            value={formatPercent(stats.data.success_rate, 1)}
+            hint={`失败 ${stats.data.failure_count} 次`}
+            icon={<ShieldCheck className="size-4" />}
+            tone={stats.data.failure_count === 0 ? "success" : "warning"}
+          />
+          <StatCard
+            label="平均延迟"
+            value={formatMs(stats.data.average_latency_ms)}
+            hint={stats.data.last_activity_at ? `最近 ${formatRelative(stats.data.last_activity_at)}` : "—"}
+            icon={<Gauge className="size-4" />}
+          />
+          <StatCard
+            label="P95 延迟"
+            value={formatMs(stats.data.p95_latency_ms)}
+            hint="长尾指标，反映最慢的一批请求"
+          />
+        </div>
+      ) : null}
 
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      {/* --------------------------------------------------- distributions */}
+      {stats.status === "success" ? (
+        <SectionAccordion
+          label="查看分布统计"
+          description="按类型 / Skill / 状态汇总近 30 天记录"
+          icon={<ChartColumn className="size-4" />}
+        >
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Card>
               <CardHeader dense title="按类型分布" icon={<Filter className="size-4" />} />
               <CardContent>
@@ -95,9 +103,11 @@ export default function ActivityPage() {
               <CardHeader dense title="按 Skill 分布" />
               <CardContent>
                 {Object.keys(stats.data.by_skill).length === 0 ? (
-                  <p className="py-6 text-center text-xs text-[var(--color-ink-faint)]">
-                    还没有 Agent 运行记录。
-                  </p>
+                  <EmptyState
+                    icon={<Activity className="size-5" />}
+                    title="还没有 Skill 运行记录"
+                    description="发起一次 Agent 任务后，这里会按 Skill 汇总调用次数。"
+                  />
                 ) : (
                   <BarChart
                     data={Object.entries(stats.data.by_skill).map(([key, value], index) => ({
@@ -128,7 +138,7 @@ export default function ActivityPage() {
               </CardContent>
             </Card>
           </div>
-        </>
+        </SectionAccordion>
       ) : null}
 
       {/* --------------------------------------------------------- records */}
@@ -140,11 +150,11 @@ export default function ActivityPage() {
           dense
           actions={
             <>
-              <Button size="sm" variant="ghost" onClick={reloadAll}>
+              <Button size="sm" variant="ghost" className="min-h-11" onClick={reloadAll}>
                 <RefreshCw className="size-3.5" />
                 刷新
               </Button>
-              <Button size="sm" variant="outline" onClick={() => void clear()}>
+              <Button size="sm" variant="outline" className="min-h-11" onClick={() => void clear()}>
                 清空
               </Button>
             </>
@@ -153,7 +163,11 @@ export default function ActivityPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-3">
             <Field label="类型" className="w-44">
-              <Select value={kind} onChange={(event) => setKind(event.target.value)}>
+              <Select
+                className="min-h-11"
+                value={kind}
+                onChange={(event) => setKind(event.target.value)}
+              >
                 <option value="">全部</option>
                 {Object.keys(ACTIVITY_KIND_LABELS).map((key) => (
                   <option key={key} value={key}>
@@ -163,7 +177,11 @@ export default function ActivityPage() {
               </Select>
             </Field>
             <Field label="状态" className="w-36">
-              <Select value={status} onChange={(event) => setStatus(event.target.value)}>
+              <Select
+                className="min-h-11"
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+              >
                 <option value="">全部</option>
                 <option value="success">success</option>
                 <option value="failed">failed</option>

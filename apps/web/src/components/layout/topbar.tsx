@@ -99,10 +99,13 @@ export function Topbar({
           </Badge>
         ) : null}
 
+        {/* A phone header carries the page name, the menu and the theme toggle
+            only — every extra control costs horizontal room the title needs. */}
         {onRefresh ? (
           <Button
             size="icon"
             variant="ghost"
+            className="max-sm:hidden"
             onClick={() => {
               onRefresh();
               toast({ title: "已刷新数据", variant: "info", duration: 1600 });
