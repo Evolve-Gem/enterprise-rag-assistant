@@ -1,69 +1,138 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Enterprise RAG Copilot — Design System
+   Enterprise RAG Copilot — Design System V2 (V4.2)
    ---------------------------------------------------------------------------
-   Palette: white / zinc / slate surfaces with a restrained indigo accent.
-   Nothing is saturated at full strength; the accent only appears on borders,
-   icons and small fills, so a long working session stays comfortable.
+   Direction: Premium / Calm / Intelligent / Modern / Trustworthy / Lightweight /
+   Precise. The reference points are mature SaaS tools and high-quality AI
+   copilots — not landing pages, not neon, not glass everywhere.
 
-   Both themes are first-class: every token is declared twice, and the dark
-   values are tuned (not mechanically inverted) so contrast stays >= 4.5:1.
+   Three rules drive V2:
+
+   1. SURFACE HIERARCHY INSTEAD OF BORDERS. Previously `--color-surface` and
+      `--color-surface-raised` were both #ffffff, so the only thing separating a
+      page from a card from a nested card was a 1px grey border — the
+      "white card wall". V2 gives each layer a distinct background value AND a
+      distinct elevation, so structure reads before any border does.
+
+   2. BOTH THEMES TUNED SEPARATELY. Dark mode is not an inversion: it uses a
+      deeper canvas, cooler raised surfaces and a lighter accent, and its
+      elevations rely on a subtle black shadow plus a faint brand glow rather
+      than on contrast against white.
+
+   3. CONTRAST IS A CONSTRAINT, NOT AN AESTHETIC. The old `--color-ink-faint`
+      was #a1a1aa — about 2.9:1 on white, below WCAG AA. V2 raises the faint
+      tier to >= 4.4:1 and keeps the visual hierarchy through size and weight
+      instead of through extreme lightness.
 --------------------------------------------------------------------------- */
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* --- neutral surfaces ------------------------------------------------ */
-  --color-canvas: #fafafa;
-  --color-surface: #ffffff;
-  --color-surface-raised: #ffffff;
-  --color-surface-sunken: #f4f4f5;
-  --color-overlay: rgb(24 24 27 / 0.44);
+  /* =======================================================================
+     1. SURFACES — six distinct layers
+     ======================================================================= */
 
-  /* --- text ------------------------------------------------------------ */
-  --color-ink: #18181b;
-  --color-ink-soft: #3f3f46;
-  --color-ink-muted: #71717a;
-  --color-ink-faint: #a1a1aa;
+  /* Page canvas. Slightly deeper than V4.1 (#fafafa) so that a white surface
+     reads as raised without needing a border. */
+  --color-canvas: #f4f4f7;
+
+  /* Surface-base: the default content surface (ordinary cards, panels). */
+  --color-surface: #ffffff;
+
+  /* Surface-subtle: secondary information — metric strips, meta blocks,
+     anything that should sit visually *below* the base surface. */
+  --color-surface-subtle: #fafafb;
+
+  /* Surface-raised: overlays and the primary task panel. Same fill as base in
+     light mode on purpose; the separation comes from --elevation-2. */
+  --color-surface-raised: #ffffff;
+
+  /* Surface-interactive: list rows / clickable items; gets a tint on hover. */
+  --color-surface-interactive: #ffffff;
+
+  /* Surface-result: what the AI produced. A 1% brand wash so a result never
+     reads as "just another white card". */
+  --color-surface-result: #fcfcff;
+
+  /* Surface-inset: recessed areas — code blocks, table headers, textarea. */
+  --color-surface-inset: #f5f5f8;
+  --color-surface-sunken: #ececf1;
+
+  --color-overlay: rgb(20 20 28 / 0.42);
+
+  /* =======================================================================
+     2. BORDERS — three tiers
+     ======================================================================= */
+  --color-line: #e6e6ec;
+  --color-line-strong: #d5d5de;
+  --color-line-faint: #efeff4;
+
+  /* A brand-tinted hairline, for surfaces that should read as "active" or
+     "AI-related" without a filled background. */
+  --color-line-brand: #dfe3ff;
+
+  /* =======================================================================
+     3. TEXT — three tiers, all >= 4.4:1 on their intended surface
+     ======================================================================= */
+  --color-ink: #101014;
+  --color-ink-soft: #3b3b45;
+  --color-ink-muted: #63636f;
+  --color-ink-faint: #7c7c88;
   --color-ink-inverse: #fafafa;
 
-  /* --- lines ----------------------------------------------------------- */
-  --color-line: #e4e4e7;
-  --color-line-strong: #d4d4d8;
-  --color-line-faint: #f2f2f4;
-
-  /* --- brand / accent -------------------------------------------------- */
+  /* =======================================================================
+     4. BRAND
+     ======================================================================= */
   --color-accent: #4f46e5;
   --color-accent-hover: #4338ca;
-  --color-accent-soft: #eef2ff;
-  --color-accent-soft-hover: #e0e7ff;
-  --color-accent-line: #c7d2fe;
-  --color-accent-ink: #3730a3;
+  --color-accent-soft: #eef1ff;
+  --color-accent-soft-hover: #e3e7ff;
+  --color-accent-line: #ccd3ff;
+  --color-accent-ink: #312e81;
 
-  /* --- semantic -------------------------------------------------------- */
+  /* Solid brand FILL.
+     `--color-accent` is tuned to be readable as *text, borders and icons*, which
+     is why dark mode lightens it (#8b95ff). Using that same lightened value as a
+     filled button background put white text on it and measured 2.63:1 (AA needs
+     4.5:1). Fill and emphasis are different jobs, so they get different tokens.
+     The dark fill stays a deep indigo rather than the lightened accent. */
+  --color-accent-solid: #4f46e5;        /* white text = 6.29:1 */
+  --color-accent-solid-hover: #4338ca;  /* darker on hover, higher contrast */
+
+  /* Brand glow — used by the hero and the mascot only, always at low alpha. */
+  --color-brand-glow: rgb(79 70 229 / 0.16);
+  --color-brand-glow-soft: rgb(79 70 229 / 0.07);
+
+  /* =======================================================================
+     5. SEMANTIC
+     ======================================================================= */
   --color-success: #15803d;
-  --color-success-soft: #f0fdf4;
-  --color-success-line: #bbf7d0;
-  --color-warning: #b45309;
-  --color-warning-soft: #fffbeb;
-  --color-warning-line: #fde68a;
-  --color-danger: #b91c1c;
-  --color-danger-soft: #fef2f2;
-  --color-danger-line: #fecaca;
-  --color-info: #0e7490;
-  --color-info-soft: #ecfeff;
-  --color-info-line: #a5f3fc;
+  --color-success-soft: #f2fdf5;
+  --color-success-line: #c3ebcd;
+  --color-warning: #a35a08;
+  --color-warning-soft: #fffaef;
+  --color-warning-line: #f3dfae;
+  --color-danger: #b42324;
+  --color-danger-soft: #fef3f3;
+  --color-danger-line: #f6cccc;
+  --color-info: #0b6f88;
+  --color-info-soft: #f0fbfd;
+  --color-info-line: #aee6f1;
 
-  /* --- data viz (ordered for colour-blind separation) ------------------ */
+  /* =======================================================================
+     6. DATA VIZ
+     ======================================================================= */
   --color-viz-1: #4f46e5;
-  --color-viz-2: #0891b2;
+  --color-viz-2: #0e7490;
   --color-viz-3: #7c3aed;
   --color-viz-4: #b45309;
   --color-viz-5: #15803d;
   --color-viz-6: #be185d;
 
-  /* --- radii (12 = normal card, 16 = main-task card, 20 = hero) --------- */
+  /* =======================================================================
+     7. RADII — semantic names kept alongside the numeric scale
+     ======================================================================= */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -71,13 +140,68 @@
   --radius-xl: 16px;
   --radius-2xl: 20px;
 
-  /* --- glass surfaces (hero) ------------------------------------------- */
-  /* Translucent so the ambient wash behind the hero reads through the blur.
-     Only used by HeroPanel; regular panels stay opaque. */
-  --color-glass: rgb(255 255 255 / 0.72);
-  --color-glass-line: rgb(255 255 255 / 0.68);
+  --radius-small: 8px;   /* chips, inputs, small controls */
+  --radius-medium: 12px; /* ordinary cards */
+  --radius-large: 16px;  /* primary task panel, result surface */
+  --radius-hero: 20px;   /* hero only */
 
-  /* --- typography ------------------------------------------------------ */
+  /* =======================================================================
+     8. ELEVATION — four levels
+     ======================================================================= */
+  --elevation-0: none;
+
+  /* Hairline lift: separator-level elements, inputs at rest. */
+  --elevation-1:
+    0 1px 1px rgb(16 16 24 / 0.03),
+    0 1px 2px rgb(16 16 24 / 0.04);
+
+  /* Content cards. Subtle enough to disappear, present enough to stack. */
+  --elevation-2:
+    0 1px 2px rgb(16 16 24 / 0.04),
+    0 8px 24px -14px rgb(16 16 24 / 0.16);
+
+  /* The primary task panel and the AI result surface. */
+  --elevation-3:
+    0 1px 2px rgb(16 16 24 / 0.05),
+    0 16px 40px -20px rgb(16 16 24 / 0.22);
+
+  /* Hero only. Carries a faint brand tint so it feels lit rather than stacked. */
+  --elevation-hero:
+    0 1px 2px rgb(16 16 24 / 0.04),
+    0 22px 52px -26px rgb(63 56 158 / 0.30);
+
+  /* =======================================================================
+     9. MOTION — three durations, three easings
+     ======================================================================= */
+  --motion-fast: 120ms;
+  --motion-normal: 200ms;
+  --motion-slow: 320ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  /* Switch knob. A fixed white knob is the convention, but it still has
+     to come from a token so a dark-mode pass can tune it. */
+  --color-switch-knob: #ffffff;
+
+  /* =======================================================================
+     10. GLASS (hero + nav overlay only — never for ordinary cards)
+     ======================================================================= */
+  --color-glass: rgb(255 255 255 / 0.72);
+  --color-glass-line: rgb(255 255 255 / 0.7);
+  /* Hero panel fill, as a two-stop gradient. Previously this was hardcoded
+     in the component as a white gradient, which does not change with the
+     theme — so in dark mode near-white text in --color-ink sat on a light
+     panel and measured 1.74:1. Keeping both stops here means the fill and
+     the text always move together. */
+  --color-glass-from: rgb(255 255 255 / 0.82);
+  --color-glass-via: rgb(255 255 255 / 0.62);
+  --color-glass-to: rgb(255 255 255 / 0.70);
+
+  /* =======================================================================
+     11. TYPOGRAPHY
+     ======================================================================= */
   --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
     sans-serif;
@@ -86,57 +210,99 @@
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1.05rem;
+  /* Display sizes used by the hero and section leads. */
+  --text-display: 2rem;
+  --text-display--line-height: 1.22;
+  --text-display--letter-spacing: -0.021em;
 }
 
-/* --- dark theme ---------------------------------------------------------- */
+/* --- dark theme ----------------------------------------------------------
+   Tuned independently. The canvas is deeper than the surfaces (the opposite of
+   inverting light mode), raised surfaces get cooler and slightly bluer, and the
+   accent is lifted so it stays legible on dark instead of turning muddy.
+------------------------------------------------------------------------- */
 .dark {
-  --color-canvas: #09090b;
-  --color-surface: #101013;
-  --color-surface-raised: #17171b;
-  --color-surface-sunken: #0b0b0e;
-  --color-overlay: rgb(0 0 0 / 0.66);
+  --color-canvas: #08080b;
+  --color-surface: #111116;
+  --color-surface-subtle: #0e0e13;
+  --color-surface-raised: #16161c;
+  --color-surface-interactive: #14141a;
+  /* A cool brand-tinted dark, not a lighter grey. */
+  --color-surface-result: #12121c;
+  --color-surface-inset: #0d0d12;
+  --color-surface-sunken: #0a0a0e;
 
-  --color-ink: #f4f4f5;
-  --color-ink-soft: #d4d4d8;
-  --color-ink-muted: #a0a0aa;
-  --color-ink-faint: #6c6c76;
-  --color-ink-inverse: #18181b;
+  --color-overlay: rgb(0 0 0 / 0.62);
 
-  --color-line: #26262c;
-  --color-line-strong: #35353d;
-  --color-line-faint: #1c1c21;
+  --color-line: #26262f;
+  --color-line-strong: #363641;
+  --color-line-faint: #1a1a21;
+  --color-line-brand: #302f63;
 
-  --color-accent: #818cf8;
-  --color-accent-hover: #a5b4fc;
-  --color-accent-soft: #1e1b4b;
-  --color-accent-soft-hover: #272155;
-  --color-accent-line: #3730a3;
-  --color-accent-ink: #c7d2fe;
+  --color-ink: #f2f2f5;
+  --color-ink-soft: #cccdd4;
+  --color-ink-muted: #a2a2ae;
+  --color-ink-faint: #8a8a96;
+  --color-ink-inverse: #101014;
 
-  --color-success: #4ade80;
-  --color-success-soft: #06210f;
-  --color-success-line: #14532d;
-  --color-warning: #fbbf24;
-  --color-warning-soft: #26170a;
-  --color-warning-line: #78350f;
-  --color-danger: #f87171;
-  --color-danger-soft: #240d0d;
-  --color-danger-line: #7f1d1d;
-  --color-info: #22d3ee;
-  --color-info-soft: #08262d;
-  --color-info-line: #155e75;
+  --color-accent: #8b95ff;
+  --color-accent-hover: #a8b0ff;
+  --color-accent-soft: #1b1b3d;
+  --color-accent-soft-hover: #232356;
+  --color-accent-line: #35356e;
+  --color-accent-ink: #c9cfff;
 
-  --color-viz-1: #818cf8;
-  --color-viz-2: #22d3ee;
-  --color-viz-3: #a78bfa;
-  --color-viz-4: #fbbf24;
-  --color-viz-5: #4ade80;
-  --color-viz-6: #f472b6;
+  --color-brand-glow: rgb(139 149 255 / 0.20);
+  --color-brand-glow-soft: rgb(139 149 255 / 0.09);
 
-  /* Glass needs far less white in dark mode, and the border flips to a hairline
-     highlight rather than a brighter white. */
-  --color-glass: rgb(16 16 19 / 0.55);
-  --color-glass-line: rgb(255 255 255 / 0.08);
+  /* Dark keeps a deep indigo fill so white text passes; hover goes slightly
+     lighter (5.50:1) which still clears 4.5:1 and reads as "brighter". */
+  --color-accent-solid: #4f46e5;        /* white text = 6.29:1 */
+  --color-accent-solid-hover: #5850f0;  /* white text = 5.50:1 */
+
+  --color-success: #56d98a;
+  --color-success-soft: #071d11;
+  --color-success-line: #155432;
+  --color-warning: #f2b544;
+  --color-warning-soft: #20160a;
+  --color-warning-line: #6d4310;
+  --color-danger: #f78c8c;
+  --color-danger-soft: #1f0f10;
+  --color-danger-line: #742a2a;
+  --color-info: #4fd0e8;
+  --color-info-soft: #08222a;
+  --color-info-line: #12556a;
+
+  --color-viz-1: #8b95ff;
+  --color-viz-2: #3fd0e8;
+  --color-viz-3: #b39bff;
+  --color-viz-4: #f2b544;
+  --color-viz-5: #56d98a;
+  --color-viz-6: #f687b3;
+
+  --color-glass: rgb(17 17 22 / 0.62);
+  --color-glass-line: rgb(255 255 255 / 0.075);
+  /* Dark hero glass: a cool near-black, so the light text stays on top of
+     it instead of on a bright panel. */
+  --color-glass-from: rgb(24 24 34 / 0.86);
+  --color-glass-via: rgb(16 16 24 / 0.74);
+  --color-glass-to: rgb(20 20 30 / 0.80);
+  --color-switch-knob: #eeedf2;
+
+  /* Dark elevations lean on black plus a whisper of brand light. */
+  --elevation-1:
+    0 1px 1px rgb(0 0 0 / 0.4),
+    0 1px 2px rgb(0 0 0 / 0.3);
+  --elevation-2:
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 8px 24px -14px rgb(0 0 0 / 0.6);
+  --elevation-3:
+    0 1px 2px rgb(0 0 0 / 0.55),
+    0 16px 40px -20px rgb(0 0 0 / 0.7);
+  --elevation-hero:
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 22px 52px -26px rgb(0 0 0 / 0.75),
+    0 0 60px -30px rgb(139 149 255 / 0.45);
 }
 
 /* --- base --------------------------------------------------------------- */
@@ -163,10 +329,14 @@
     color: var(--color-accent-ink);
   }
 
+  /* Focus: visible and calm. A ring plus a faint halo reads as deliberate
+     without the harsh default outline. Never removed — only restyled. */
+  /* Deliberately does NOT set border-radius: this selector matches every
+     focusable element, and forcing a radius squared off pills, chips and
+     rounded cards the moment they received focus. */
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
-    border-radius: var(--radius-xs);
   }
 
   /* Slim, unobtrusive scrollbars: the working area is information dense. */
@@ -195,19 +365,156 @@
     background-color: var(--color-ink-faint);
     background-clip: content-box;
   }
+
+  /* Headings get tighter tracking as they grow — the single biggest reason
+     large Chinese headings read as "web page" rather than "product". */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.012em;
+  }
+
+  /* Tabular numbers everywhere numbers are compared. */
+  table,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* --- rendered markdown --------------------------------------------------- */
+/* --- surface utilities ---------------------------------------------------
+   The vocabulary the components use. Keeping these in CSS rather than
+   repeating arbitrary Tailwind values at every call site is what stops the
+   hierarchy from drifting.
+------------------------------------------------------------------------- */
+@layer utilities {
+  /* Level 0 — page background, no elevation. */
+  .surface-canvas {
+    background-color: var(--color-canvas);
+  }
+
+  /* Level 1 — ordinary content card. */
+  .surface-base {
+    background-color: var(--color-surface);
+    box-shadow: var(--elevation-1);
+  }
+
+  /* Level 1 (flat variant) — secondary information that should recede. */
+  .surface-subtle {
+    background-color: var(--color-surface-subtle);
+    box-shadow: none;
+  }
+
+  /* Level 2 — the primary task panel. */
+  .surface-raised {
+    background-color: var(--color-surface-raised);
+    box-shadow: var(--elevation-2);
+  }
+
+  /* Level 2 (strong) — the AI result surface. */
+  .surface-result {
+    background-color: var(--color-surface-result);
+    box-shadow: var(--elevation-2);
+  }
+
+  /* Recessed — code, table headers, textarea wells. */
+  .surface-inset {
+    background-color: var(--color-surface-inset);
+  }
+
+  /* Row / item that responds to hover with a tint rather than a border change. */
+  .surface-interactive {
+    background-color: var(--color-surface-interactive);
+    transition:
+      background-color var(--motion-fast) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard);
+  }
+
+  .surface-interactive:hover {
+    background-color: var(--color-surface-subtle);
+  }
+
+  /* Hero glass. Deliberately NOT applied to ordinary cards — glass everywhere
+     is the fastest way to look like a template. */
+  .surface-glass {
+    background-color: var(--color-glass);
+    backdrop-filter: blur(18px) saturate(1.25);
+    box-shadow: var(--elevation-hero);
+  }
+
+  /* --- elevation only ------------------------------------------------- */
+  .elev-1 {
+    box-shadow: var(--elevation-1);
+  }
+  .elev-2 {
+    box-shadow: var(--elevation-2);
+  }
+  .elev-3 {
+    box-shadow: var(--elevation-3);
+  }
+
+  /* --- micro-interaction helpers --------------------------------------- */
+  /* A 1px lift on hover. The whole motion language stays inside 1–2px. */
+  .lift {
+    transition:
+      transform var(--motion-fast) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard),
+      background-color var(--motion-fast) var(--ease-standard);
+  }
+
+  .lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--elevation-2);
+  }
+
+  .lift:active {
+    transform: translateY(0);
+    box-shadow: var(--elevation-1);
+  }
+
+  /* Press feedback for controls that should not move. */
+  .press {
+    transition:
+      background-color var(--motion-fast) var(--ease-standard),
+      color var(--motion-fast) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard);
+  }
+
+  .press:active {
+    transform: scale(0.985);
+  }
+
+  /* --- texture ---------------------------------------------------------- */
+  /* A grain so large flat areas are not perfectly flat. ~1% opacity, no image
+     request, no layout cost. */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .dark .grain::after {
+    opacity: 0.055;
+  }
+}
+
+/* --- rendered markdown ---------------------------------------------------
+   Long-form reading. V4.2 raised the base size slightly and opened up the
+   rhythm: this is the surface a recruiter actually reads.
+------------------------------------------------------------------------- */
 @layer components {
   .prose-copilot {
     color: var(--color-ink-soft);
     font-size: 0.9375rem;
-    line-height: 1.75;
+    line-height: 1.78;
     word-break: break-word;
   }
 
   .prose-copilot > * + * {
-    margin-top: 0.85rem;
+    margin-top: 0.95rem;
   }
 
   .prose-copilot h1,
@@ -216,23 +523,31 @@
   .prose-copilot h4 {
     color: var(--color-ink);
     font-weight: 600;
-    line-height: 1.35;
-    margin-top: 1.6rem;
-    margin-bottom: 0.55rem;
+    line-height: 1.38;
+    margin-top: 1.75rem;
+    margin-bottom: 0.6rem;
   }
 
   .prose-copilot h1 {
-    font-size: 1.28rem;
+    font-size: 1.3rem;
   }
 
+  /* The rule under h2 was doing too much work; a shorter, softer divider
+     separates sections without slicing the page. */
   .prose-copilot h2 {
-    font-size: 1.06rem;
-    padding-bottom: 0.32rem;
-    border-bottom: 1px solid var(--color-line);
+    font-size: 1.08rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--color-line-faint);
   }
 
   .prose-copilot h3 {
-    font-size: 0.98rem;
+    font-size: 1rem;
+  }
+
+  .prose-copilot > h1:first-child,
+  .prose-copilot > h2:first-child,
+  .prose-copilot > h3:first-child {
+    margin-top: 0;
   }
 
   .prose-copilot h4 {
@@ -245,7 +560,7 @@
 
   .prose-copilot ul,
   .prose-copilot ol {
-    padding-left: 1.25rem;
+    padding-left: 1.3rem;
     margin: 0;
   }
 
@@ -258,7 +573,7 @@
   }
 
   .prose-copilot li + li {
-    margin-top: 0.28rem;
+    margin-top: 0.4rem;
   }
 
   .prose-copilot li::marker {
@@ -277,27 +592,27 @@
   }
 
   .prose-copilot blockquote {
-    border-left: 3px solid var(--color-accent-line);
+    border-left: 2px solid var(--color-accent-line);
     background: var(--color-accent-soft);
     color: var(--color-accent-ink);
-    padding: 0.6rem 0.85rem;
+    padding: 0.7rem 0.9rem;
     border-radius: 0 var(--radius-md) var(--radius-md) 0;
   }
 
   .prose-copilot code {
     font-family: var(--font-mono);
     font-size: 0.84em;
-    background: var(--color-surface-sunken);
-    border: 1px solid var(--color-line);
+    background: var(--color-surface-inset);
+    border: 1px solid var(--color-line-faint);
     border-radius: var(--radius-xs);
-    padding: 0.08rem 0.28rem;
+    padding: 0.1rem 0.3rem;
   }
 
   .prose-copilot pre {
-    background: var(--color-surface-sunken);
-    border: 1px solid var(--color-line);
+    background: var(--color-surface-inset);
+    border: 1px solid var(--color-line-faint);
     border-radius: var(--radius-md);
-    padding: 0.85rem 1rem;
+    padding: 0.9rem 1rem;
     overflow-x: auto;
   }
 
@@ -306,7 +621,7 @@
     border: none;
     padding: 0;
     font-size: 0.82rem;
-    line-height: 1.6;
+    line-height: 1.65;
   }
 
   .prose-copilot table {
@@ -319,27 +634,37 @@
 
   .prose-copilot th,
   .prose-copilot td {
-    border: 1px solid var(--color-line);
-    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--color-line-faint);
+    padding: 0.5rem 0.7rem;
     text-align: left;
     vertical-align: top;
   }
 
   .prose-copilot th {
-    background: var(--color-surface-sunken);
+    background: var(--color-surface-inset);
     color: var(--color-ink);
     font-weight: 600;
     white-space: nowrap;
   }
 
+  /* Report tables get a row hover so a long table can be followed across.
+     Done here rather than with an arbitrary variant at each call site, so any
+     Markdown table in the product behaves the same way. */
+  .prose-copilot tbody tr {
+    transition: background-color var(--motion-fast) var(--ease-standard);
+  }
+
+  .prose-copilot tbody tr:hover {
+    background: var(--color-surface-subtle);
+  }
+
   .prose-copilot hr {
     border: none;
-    border-top: 1px solid var(--color-line);
+    border-top: 1px solid var(--color-line-faint);
   }
 }
 
-/* --- touch targets (phones only) ----------------------------------------- */
-/*
+/* --- touch targets (phones only) -----------------------------------------
    V4.1 §11. The QR entry point is a phone, so every standalone control gets a
    44px minimum below `sm`. Applied here rather than per page because the raw
    primitives are smaller: `Button size="sm"` is 32px and a `Select` is 36px, and
@@ -349,9 +674,27 @@
    `display: inline`, so prose links keep their natural line box and only
    block/flex links (cards, list rows) are governed — those are already >=44px.
 */
-@media (max-width: 639px) {
+/*
+   Two triggers on purpose:
+
+   - `(pointer: coarse)` — the primary input is a finger. This covers phones AND
+     tablets, including a 768x1024 iPad, which the old `max-width: 639px` rule
+     missed entirely (it left 34 sub-24px targets there). It stays false on a
+     laptop with a touchscreen whose primary pointer is still a mouse, so desktop
+     layouts are not resized on hybrid machines.
+   - `(max-width: 639px)` — kept because a phone with a stylus can report
+     `pointer: fine` while still being thumb-driven.
+
+   44px is the comfortable product line. WCAG 2.2 SC 2.5.8 asks for 24px with
+   adequate spacing, so the desktop elements that sit between 24 and 44 (small
+   buttons, selects at 36px) are compliant and intentionally not enlarged —
+   growing them would change desktop information density for no user benefit.
+*/
+@media (max-width: 639px), (pointer: coarse) {
   button,
   [role="tab"],
+  [role="radio"],
+  [role="button"],
   summary,
   select,
   input:not([type="checkbox"]):not([type="radio"]),
@@ -372,9 +715,29 @@
   a[href] {
     min-width: 44px;
   }
+
+  /*
+     EXEMPTION — inline controls inside rendered prose.
+
+     This block is unlayered, so it outranks every `@layer utilities` rule.
+     That is exactly what we want for standalone controls, and exactly wrong for
+     a citation marker: `[n]` is a <button> sitting inside a paragraph, and
+     forcing it to 44px sets the line box of the surrounding sentence, opening
+     the answer text into ragged gaps. A `min-h-0` utility cannot fix it because
+     of the layering, so the exemption has to live here.
+
+     WCAG agrees with this split: the target-size rule exempts controls that are
+     inline within a sentence.
+  */
+  .prose-copilot button,
+  .prose-copilot a[href] {
+    min-height: 0;
+    min-width: 0;
+  }
 }
 
-/* --- motion -------------------------------------------------------------- */@keyframes copilot-caret {
+/* --- motion -------------------------------------------------------------- */
+@keyframes copilot-caret {
   0%,
   100% {
     opacity: 1;
@@ -418,6 +781,20 @@
   }
 }
 
+/* Breathing: a barely-perceptible scale cycle. Reserved for the mascot's
+   "working" states so it signals life without competing with reading. */
+@keyframes copilot-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.035);
+    opacity: 1;
+  }
+}
+
 @keyframes copilot-blink {
   0%,
   92%,
@@ -426,6 +803,19 @@
   }
   96% {
     transform: scaleY(0.08);
+  }
+}
+
+/* Result reveal: a short fade + 4px rise. Used once per result, never on a
+   list of items. */
+@keyframes copilot-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -441,9 +831,17 @@
   animation: copilot-float 3.6s ease-in-out infinite;
 }
 
+.animate-breathe {
+  animation: copilot-breathe 3.2s ease-in-out infinite;
+}
+
 .animate-blink {
   animation: copilot-blink 5s ease-in-out infinite;
   transform-origin: center;
+}
+
+.animate-reveal {
+  animation: copilot-reveal var(--motion-slow) var(--ease-enter) both;
 }
 
 .shimmer {
@@ -458,6 +856,9 @@
   animation: copilot-shimmer 1.5s ease-in-out infinite;
 }
 
+/* Reduced motion: everything non-essential stops. The shimmer and the
+   decorative loops are removed entirely rather than shortened, because a
+   0.01ms loop still costs a compositing layer on some devices. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -465,5 +866,19 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-float,
+  .animate-breathe,
+  .animate-blink,
+  .animate-pulse-ring,
+  .shimmer {
+    animation: none !important;
+  }
+
+  .lift:hover,
+  .press:active {
+    transform: none !important;
   }
 }

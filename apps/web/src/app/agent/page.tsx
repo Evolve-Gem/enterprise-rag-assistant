@@ -1,6 +1,19 @@
 "use client";
 
-import { ArrowDown, Bot, FileText, Play, ShieldAlert, Sparkles, Wrench } from "lucide-react";
+import {
+  ArrowDown,
+  Blocks,
+  BookOpen,
+  Bot,
+  Compass,
+  FileText,
+  Gauge,
+  ListChecks,
+  Play,
+  ShieldAlert,
+  Sparkles,
+  Wrench,
+} from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import { TraceTimeline } from "@/components/agent/trace-timeline";
@@ -27,7 +40,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { api, ApiError } from "@/lib/api";
 import { useAsync, usePresetParam } from "@/lib/hooks";
 import type { AgentCatalogResponse, AgentRunResponse } from "@/lib/types";
-import { formatMs, formatPercent } from "@/lib/utils";
+import { cn, formatMs, formatPercent, TRACE_NODE_LABELS } from "@/lib/utils";
 
 const EXAMPLE_TASKS = [
   "帮我分析当前知识库还缺少哪些售前资料。",
@@ -51,6 +64,13 @@ const INTENT_OPTIONS = [
 
 type DetailTab = "trace" | "tools" | "plan";
 type Engine = "auto" | "native" | "langgraph";
+
+/** Human label for a tool-call status, so the table is not a raw enum dump. */
+const TOOL_STATUS_LABEL: Record<string, string> = {
+  success: "成功",
+  failed: "失败",
+  skipped: "跳过",
+};
 
 /** One shape for both layouts, so the idle and result views cannot drift. */
 interface TaskFormProps {
@@ -251,9 +271,9 @@ export default function AgentPage() {
               icon={<Bot className="size-4" />}
             />
             <MainTaskBody>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,16rem)] lg:gap-x-5">
                 <TaskFields {...formProps} />
-                <div className="lg:border-l lg:border-[var(--color-line-faint)] lg:pl-4">
+                <div className="border-t border-[var(--color-line-faint)] pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
                   <SettingsFields {...formProps} />
                 </div>
               </div>
@@ -284,7 +304,7 @@ export default function AgentPage() {
               icon={<Wrench className="size-4" />}
             >
               <div className="space-y-3">
-                <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2">
+                <div className="rounded-[var(--radius-medium)] surface-inset border border-[var(--color-line-faint)] px-3 py-2">
                   <DefRow label="可用 Skill">{catalog.data.skills.length}</DefRow>
                   <DefRow label="可用 Tool">{catalog.data.tools.length}</DefRow>
                   <DefRow label="LangGraph">
@@ -296,7 +316,7 @@ export default function AgentPage() {
                   {catalog.data.skills.map((skill) => (
                     <div
                       key={skill.id}
-                      className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2"
+                      className="rounded-[var(--radius-medium)] surface-inset border border-[var(--color-line-faint)] px-3 py-2"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-xs font-medium text-[var(--color-ink)]">
@@ -368,7 +388,7 @@ export default function AgentPage() {
           {result ? (
             <>
               {result.human_check_required ? (
-                <div className="flex items-start gap-2.5 rounded-[var(--radius-xl)] border border-[var(--color-warning-line)] bg-[var(--color-warning-soft)] px-4 py-3">
+                <div className="flex items-start gap-2.5 rounded-[var(--radius-large)] border border-[var(--color-warning-line)] bg-[var(--color-warning-soft)] px-4 py-3">
                   <ShieldAlert className="mt-0.5 size-4 shrink-0 text-[var(--color-warning)]" />
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-[var(--color-ink)]">需要人工确认</p>
@@ -381,6 +401,7 @@ export default function AgentPage() {
 
               <ResultSection
                 label="执行结果"
+                className="animate-reveal"
                 meta={`${result.skill_name || "未匹配能力"} · ${formatMs(result.latency_ms)}`}
                 icon={<FileText className="size-4" />}
                 actions={
@@ -416,10 +437,10 @@ export default function AgentPage() {
                 </div>
               ) : null}
 
-              <Card>
-                <CardContent className="space-y-3">
+              <Card surface="subtle" className="border border-[var(--color-line-faint)]">
+                <CardContent className="space-y-3.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
+                    <p className="text-2xs font-medium tracking-[0.04em] text-[var(--color-ink-muted)]">
                       刚刚发生了什么
                     </p>
                     <button
@@ -427,20 +448,42 @@ export default function AgentPage() {
                       onClick={() =>
                         traceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
                       }
-                      className="inline-flex min-h-11 items-center gap-1 text-2xs text-[var(--color-accent)] hover:underline"
+                      className="inline-flex min-h-11 items-center gap-1 text-2xs text-[var(--color-accent)] transition-colors duration-[var(--motion-fast)] hover:underline"
                     >
                       查看完整执行轨迹
                       <ArrowDown className="size-3" />
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-x-8 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                    <Fact label="识别任务" value={intentLabel} />
-                    <Fact label="选择能力" value={result.skill_name || "未匹配到能力"} />
-                    <Fact label="调用工具" value={`${result.tool_calls.length} 个`} />
-                    <Fact label="执行步骤" value={`${result.trace.length} 个`} />
-                    <Fact label="耗时" value={formatMs(result.latency_ms)} />
-                    <Fact
+                  <div className="grid grid-cols-1 gap-x-8 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                    <SummaryItem
+                      icon={<Compass className="size-3.5" />}
+                      label="识别任务"
+                      value={intentLabel}
+                    />
+                    <SummaryItem
+                      icon={<Blocks className="size-3.5" />}
+                      label="选择能力"
+                      value={result.skill_name || "未匹配到能力"}
+                    />
+                    <SummaryItem
+                      icon={<Wrench className="size-3.5" />}
+                      label="调用工具"
+                      value={`${result.tool_calls.length} 个`}
+                    />
+                    <SummaryItem
+                      icon={<ListChecks className="size-3.5" />}
+                      label="执行步骤"
+                      value={`${result.trace.length} 个`}
+                    />
+                    <SummaryItem
+                      icon={<Gauge className="size-3.5" />}
+                      label="耗时"
+                      value={formatMs(result.latency_ms)}
+                      accent
+                    />
+                    <SummaryItem
+                      icon={<BookOpen className="size-3.5" />}
                       label="证据"
                       value={
                         result.retrieved_chunks.length > 0
@@ -487,8 +530,13 @@ export default function AgentPage() {
                           </thead>
                           <tbody>
                             {result.tool_calls.map((call, index) => (
-                              <TR key={`${call.name}-${index}`}>
-                                <TD mono>{call.name}</TD>
+                              <TR
+                                key={`${call.name}-${index}`}
+                                className="hover:bg-[var(--color-surface-subtle)]"
+                              >
+                                <TD mono className="text-[var(--color-ink)]">
+                                  {call.name}
+                                </TD>
                                 <TD>
                                   <span className="inline-flex items-center gap-1.5">
                                     <StatusDot
@@ -500,10 +548,12 @@ export default function AgentPage() {
                                             : "neutral"
                                       }
                                     />
-                                    <span className="text-xs">{call.status}</span>
+                                    <span className="text-xs text-[var(--color-ink-soft)]">
+                                      {TOOL_STATUS_LABEL[call.status] ?? call.status}
+                                    </span>
                                   </span>
                                 </TD>
-                                <TD align="right" mono>
+                                <TD align="right" mono className="text-[var(--color-ink-muted)]">
                                   {formatMs(call.duration_ms)}
                                 </TD>
                                 <TD>
@@ -531,7 +581,7 @@ export default function AgentPage() {
                           {result.plan.map((step) => (
                             <li
                               key={step.index}
-                              className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-2.5"
+                              className="rounded-[var(--radius-medium)] surface-inset border border-[var(--color-line-faint)] px-3.5 py-2.5"
                             >
                               <div className="flex items-center gap-2">
                                 <span className="flex size-5 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-accent-soft)] font-mono text-[10px] font-semibold text-[var(--color-accent-ink)]">
@@ -542,7 +592,7 @@ export default function AgentPage() {
                                 </span>
                                 {step.tool ? <CodeChip>{step.tool}</CodeChip> : null}
                                 <span className="ml-auto shrink-0 font-mono text-2xs text-[var(--color-ink-faint)]">
-                                  {step.node}
+                                  {TRACE_NODE_LABELS[step.node] ?? step.node}
                                 </span>
                               </div>
                               <p className="mt-1 pl-7 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
@@ -559,7 +609,7 @@ export default function AgentPage() {
 
               {result.analysis ? (
                 <SectionAccordion label="查看中间分析结果" description="Skill 内部产出的结构化数据">
-                  <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-sunken)] p-3 font-mono text-2xs text-[var(--color-ink-soft)]">
+                  <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-[var(--radius-medium)] surface-inset border border-[var(--color-line-faint)] p-3 font-mono text-2xs text-[var(--color-ink-soft)]">
                     {result.analysis}
                   </pre>
                 </SectionAccordion>
@@ -591,12 +641,36 @@ export default function AgentPage() {
   );
 }
 
-/** One label/value pair in the plain-language run summary. */
-function Fact({ label, value }: { label: string; value: string }) {
+/** One item in the plain-language execution digest: icon + label + value. */
+function SummaryItem({
+  icon,
+  label,
+  value,
+  accent = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line-faint)] py-1 last:border-0">
-      <span className="shrink-0 text-2xs text-[var(--color-ink-muted)]">{label}</span>
-      <span className="min-w-0 truncate text-right text-xs text-[var(--color-ink)]">{value}</span>
+    <div className="flex items-start gap-2.5">
+      <span
+        className={cn(
+          "mt-px flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-small)]",
+          accent
+            ? "bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
+            : "surface-inset text-[var(--color-ink-muted)]",
+        )}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-2xs text-[var(--color-ink-faint)]">{label}</p>
+        <p className="mt-0.5 truncate font-mono text-xs text-[var(--color-ink)]" title={value}>
+          {value}
+        </p>
+      </div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 
 import { StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CompactMetric, TD, TH, TR, Table } from "@/components/ui/data";
+import { ProgressBar, TD, TH, TR, Table } from "@/components/ui/data";
 import { Field, Input, Select } from "@/components/ui/field";
 import { PageIntro } from "@/components/ui/page-intro";
 import {
@@ -251,7 +251,7 @@ export default function EvaluationPage() {
           </Field>
           {dataset.status === "success" ? (
             <p className="text-2xs text-[var(--color-ink-muted)]">
-              数据集共 {dataset.data.total} 条用例 · 存储于 {dataset.data.path}
+              数据集共 {dataset.data.total} 条用例 · 文件 {dataset.data.path.split(/[\\/]/).pop()}
             </p>
           ) : null}
         </MainTaskBody>
@@ -272,29 +272,23 @@ export default function EvaluationPage() {
                 {hitVerdict(result.summary.hit_at_k)}
               </p>
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                <CompactMetric
+                <MetricCard
                   label={`Hit@${result.summary.k}`}
                   value={formatPercent(result.summary.hit_at_k, 1)}
-                  hint="正确资料进入前 K 条的比例"
-                  tone={
-                    result.summary.hit_at_k >= 0.8
-                      ? "success"
-                      : result.summary.hit_at_k >= 0.5
-                        ? "warning"
-                        : "danger"
-                  }
-                  icon={<Target className="size-3.5" />}
+                  meaning="前 K 条结果里至少有一条正确资料的比例"
+                  ratio={result.summary.hit_at_k}
                 />
-                <CompactMetric
+                <MetricCard
                   label="MRR"
                   value={result.summary.mrr.toFixed(3)}
-                  hint="首个命中名次的倒数均值"
-                  tone="accent"
+                  meaning="首个正确资料名次的倒数均值，越靠前越高"
+                  ratio={result.summary.mrr}
                 />
-                <CompactMetric
+                <MetricCard
                   label={`Recall@${result.summary.k}`}
                   value={formatPercent(result.summary.recall_at_k, 1)}
-                  hint="期望资料被召回的比例"
+                  meaning="期望资料中真正被召回的比例"
+                  ratio={result.summary.recall_at_k}
                 />
               </div>
             </div>
@@ -378,20 +372,21 @@ export default function EvaluationPage() {
             description="答案准确率只在人工评分后才有数值，未评分显示「未评分」"
           >
             <div className="grid grid-cols-2 gap-2.5">
-              <CompactMetric
+              <MetricCard
                 label="关键词覆盖"
                 value={formatPercent(result.summary.keyword_coverage, 1)}
-                hint="召回片段覆盖问题关键词的比例"
+                meaning="召回片段覆盖问题关键词的比例"
+                ratio={result.summary.keyword_coverage}
               />
-              <CompactMetric
+              <MetricCard
                 label="答案准确率"
                 value={
                   result.summary.answer_accuracy === null
                     ? "未评分"
                     : formatPercent(result.summary.answer_accuracy, 1)
                 }
-                hint={`已人工评分 ${result.summary.graded_count} 条`}
-                tone={result.summary.answer_accuracy === null ? "warning" : "success"}
+                meaning={`已人工评分 ${result.summary.graded_count} 条`}
+                ratio={result.summary.answer_accuracy}
               />
             </div>
           </SectionAccordion>
@@ -598,6 +593,65 @@ export default function EvaluationPage() {
           </span>
         </div>
       </SectionAccordion>
+    </div>
+  );
+}
+
+/**
+ * Metric display tier.
+ *
+ * Presentation only: reuses the same two cut-offs already used by `hitVerdict`
+ * in this file (0.8 / 0.5). No metric, threshold or verdict is computed here
+ * beyond turning an existing ratio into a readable status word.
+ */
+function metricStatus(ratio: number | null): {
+  label: string;
+  tone: "success" | "warning" | "danger";
+} {
+  if (ratio === null) return { label: "未评分", tone: "warning" };
+  if (ratio >= 0.8) return { label: "良好", tone: "success" };
+  if (ratio >= 0.5) return { label: "一般", tone: "warning" };
+  return { label: "偏低", tone: "danger" };
+}
+
+/**
+ * Metric / Meaning / Status.
+ *
+ * A bare number does not say what it measures or whether it is acceptable, so
+ * every metric carries three things: the value, one plain sentence explaining
+ * it, and a status indicator (a dot + word, plus a thin meter when the metric
+ * is a 0–1 ratio).
+ */
+function MetricCard({
+  label,
+  value,
+  meaning,
+  ratio,
+}: {
+  label: string;
+  value: React.ReactNode;
+  meaning: string;
+  ratio: number | null;
+}) {
+  const status = metricStatus(ratio);
+  return (
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line-faint)] surface-subtle px-3.5 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-2xs font-semibold tracking-[0.04em] text-[var(--color-ink-muted)]">
+          {label}
+        </p>
+        <span className="inline-flex items-center gap-1.5">
+          <StatusDot tone={status.tone} />
+          <span className="text-2xs text-[var(--color-ink-muted)]">{status.label}</span>
+        </span>
+      </div>
+      <p className="mt-1 text-xl font-semibold leading-tight tabular-nums text-[var(--color-ink)]">
+        {value}
+      </p>
+      <p className="mt-1 text-2xs leading-relaxed text-[var(--color-ink-muted)]">{meaning}</p>
+      {ratio !== null ? (
+        <ProgressBar className="mt-2" value={ratio} tone={status.tone} height="h-1" />
+      ) : null}
     </div>
   );
 }

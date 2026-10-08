@@ -23,7 +23,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { api, ApiError } from "@/lib/api";
 import { useAsync, usePresetParam } from "@/lib/hooks";
 import type { RequirementForm, SolutionResponse } from "@/lib/types";
-import { formatMs, formatPercent } from "@/lib/utils";
+import { cn, formatMs, formatPercent } from "@/lib/utils";
 
 const EMPTY_FORM: RequirementForm = {
   customer: "",
@@ -253,8 +253,8 @@ export default function SolutionStudioPage() {
             <MainTaskBody className="space-y-3">
               {requirementFields}
 
-              <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2.5">
-                <p className="text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
+              <div className="rounded-[var(--radius-medium)] surface-inset border border-[var(--color-line-faint)] px-3 py-2.5">
+                <p className="text-2xs font-medium tracking-[0.04em] text-[var(--color-ink-muted)]">
                   你将得到
                 </p>
                 <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
@@ -278,7 +278,7 @@ export default function SolutionStudioPage() {
 
           <SectionAccordion label="查看生成设置" description="模型 · 检索模式 · 引用上限">
             {config.status === "success" ? (
-              <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-1">
+              <div className="rounded-[var(--radius-medium)] surface-inset border border-[var(--color-line-faint)] px-3 py-1">
                 <DefRow label="生成模型" mono>
                   {config.data.model}
                 </DefRow>
@@ -317,7 +317,7 @@ export default function SolutionStudioPage() {
           {error ? <InlineError message={error} /> : null}
 
           {loading && !result ? (
-            <div className="flex items-center gap-4 rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-4">
+            <div className="flex items-center gap-4 rounded-[var(--radius-large)] surface-base border border-[var(--color-line-faint)] px-4 py-4">
               <KnowledgeMascot state="generating" size={56} />
               <div className="min-w-0 space-y-1">
                 <p className="text-sm font-medium text-[var(--color-ink)]">正在生成售前方案…</p>
@@ -334,6 +334,7 @@ export default function SolutionStudioPage() {
                   2/3 column was the single worst readability problem. */}
               <ResultSection
                 label="售前方案"
+                className="animate-reveal"
                 meta={`${result.sections.length} 章节 · ${result.citations.length} 引用 · ${formatMs(result.latency_ms)}`}
                 icon={<FileText className="size-4" />}
                 actions={
@@ -341,6 +342,7 @@ export default function SolutionStudioPage() {
                     <Button
                       size="sm"
                       variant="outline"
+                      title="导出为 Markdown 文件（.md）"
                       loading={exporting === "markdown"}
                       onClick={() => void download("markdown")}
                     >
@@ -350,6 +352,7 @@ export default function SolutionStudioPage() {
                     <Button
                       size="sm"
                       variant="outline"
+                      title="导出为 Word 文件（.docx）"
                       loading={exporting === "docx"}
                       onClick={() => void download("docx")}
                     >
@@ -359,28 +362,52 @@ export default function SolutionStudioPage() {
                   </>
                 }
               >
-                <div className="mb-4 flex flex-wrap items-center gap-1.5">
-                  <Badge tone="neutral">{analysis?.customer_type || "未提及客户类型"}</Badge>
-                  <Badge tone="neutral">{analysis?.industry || "未提及行业"}</Badge>
-                  <Badge tone={groundedSections === result.sections.length ? "success" : "warning"}>
-                    {groundedSections}/{result.sections.length} 章节带引用
-                  </Badge>
-                </div>
+                {/* The plan is a report: constrain the measure and give the
+                    sections real document rhythm instead of one long scroll. */}
+                <div className="mx-auto w-full max-w-[68ch]">
+                  <div className="mb-5 flex flex-wrap items-center gap-1.5">
+                    <Badge tone="neutral">{analysis?.customer_type || "未提及客户类型"}</Badge>
+                    <Badge tone="neutral">{analysis?.industry || "未提及行业"}</Badge>
+                    <Badge tone={groundedSections === result.sections.length ? "success" : "warning"}>
+                      {groundedSections}/{result.sections.length} 章节带引用
+                    </Badge>
+                  </div>
 
-                <div className="space-y-7">
-                  {result.sections.map((section) => (
-                    <section key={section.key}>
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <h3 className="text-[15px] font-semibold text-[var(--color-ink)]">
-                          {section.title}
-                        </h3>
-                        <Badge tone={section.grounded ? "success" : "warning"}>
-                          {section.grounded ? "含引用" : "无引用依据"}
-                        </Badge>
-                      </div>
-                      <Markdown content={section.content} />
-                    </section>
-                  ))}
+                  <div>
+                    {result.sections.map((section, index) => {
+                      const risk = section.key === "risks";
+                      return (
+                        <section
+                          key={section.key}
+                          className={cn(
+                            "border-t border-[var(--color-line-faint)] py-5 first:border-t-0 first:pt-0",
+                            risk &&
+                              "border-l-2 border-l-[var(--color-warning-line)] pl-4",
+                          )}
+                        >
+                          <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                            <span className="font-mono text-2xs tabular-nums text-[var(--color-ink-faint)]">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+                            <h3 className="text-[15px] font-semibold tracking-[-0.006em] text-[var(--color-ink)]">
+                              {section.title}
+                            </h3>
+                            {/* Only the exception is badged. When 7 of 8 sections
+                                are grounded, a green "含引用" on each one is
+                                seven restatements of the strip above ("7/8
+                                章节带引用") — noise, not signal. */}
+                            {section.grounded ? null : (
+                              <Badge tone="warning">无引用依据</Badge>
+                            )}
+                          </div>
+                          <Markdown
+                            content={section.content}
+                            className="[&_tbody_tr:hover]:bg-[var(--color-surface-subtle)]"
+                          />
+                        </section>
+                      );
+                    })}
+                  </div>
                 </div>
               </ResultSection>
 
@@ -477,7 +504,7 @@ export default function SolutionStudioPage() {
                       </div>
                       <div>
                         <SectionLabel>检索查询词（由需求解析产出）</SectionLabel>
-                        <p className="mt-1.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-sunken)] px-3 py-2 font-mono text-2xs text-[var(--color-ink-soft)]">
+                        <p className="mt-1.5 rounded-[var(--radius-medium)] surface-inset border border-[var(--color-line-faint)] px-3 py-2 font-mono text-2xs text-[var(--color-ink-soft)]">
                           {analysis.search_query || "—"}
                         </p>
                       </div>
@@ -511,7 +538,7 @@ export default function SolutionStudioPage() {
                   {result.trace.map((step) => (
                     <li
                       key={`${step.index}-${step.node}`}
-                      className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-2.5"
+                      className="rounded-[var(--radius-medium)] surface-inset border border-[var(--color-line-faint)] px-3.5 py-2.5"
                     >
                       <div className="flex items-center gap-2">
                         <span className="flex size-5 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-accent-soft)] font-mono text-[10px] font-semibold text-[var(--color-accent-ink)]">

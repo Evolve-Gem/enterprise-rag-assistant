@@ -6,6 +6,7 @@ import {
   Database,
   ExternalLink,
   FileStack,
+  FileText,
   Layers,
   RefreshCw,
   Search,
@@ -19,7 +20,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/rag/markdown";
 import { Badge, CodeChip, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DefRow, SectionLabel } from "@/components/ui/card";
+import { Card, DefRow, SectionLabel } from "@/components/ui/card";
 import { CompactMetric, TD, TH, TR, Table } from "@/components/ui/data";
 import { Drawer } from "@/components/ui/drawer";
 import { Field, Input, Select } from "@/components/ui/field";
@@ -67,6 +68,27 @@ const INDEX_META: Record<
   building: { label: "构建中", tone: "accent" },
   empty: { label: "为空", tone: "neutral" },
 };
+
+/**
+ * Metric strip layout.
+ *
+ * The four figures read as one status bar rather than four separate cards, so
+ * the cells share a single subtle surface and are separated by hairline rules
+ * instead of a border on each tile. Mobile is a 2×2 grid (rule under the first
+ * row), desktop a single row (rule between the columns).
+ */
+const METRIC_CELL = [
+  "min-w-0 px-3.5 py-2.5",
+  "min-w-0 border-l border-[var(--color-line-faint)] px-3.5 py-2.5",
+  "min-w-0 border-t border-[var(--color-line-faint)] px-3.5 py-2.5 sm:border-t-0 sm:border-l",
+  "min-w-0 border-l border-t border-[var(--color-line-faint)] px-3.5 py-2.5 sm:border-t-0",
+];
+
+/** Strip the per-tile card chrome so CompactMetric blends into the strip. */
+const METRIC_INNER = "rounded-none border-0 bg-transparent p-0 shadow-none";
+
+/** Stable id pairing the upload label with its visually hidden file input. */
+const UPLOAD_INPUT_ID = "knowledge-upload-input";
 
 export default function DocumentsPage() {
   const { toast } = useToast();
@@ -214,44 +236,60 @@ export default function DocumentsPage() {
 
       {/* ------------------------------------------------------------ stats */}
       {stats.status === "success" ? (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          <CompactMetric
-            label="文档"
-            value={formatCount(stats.data.document_count)}
-            hint={`${stats.data.indexed_document_count} 个已索引`}
-            icon={<FileStack className="size-3.5" />}
-            tone="accent"
-          />
-          <CompactMetric
-            label="知识块"
-            value={formatCount(stats.data.chunk_count)}
-            hint={`${stats.data.vectorized_chunk_count} 个已向量化`}
-            icon={<Layers className="size-3.5" />}
-          />
-          <CompactMetric
-            label="索引状态"
-            value={indexState ? INDEX_META[indexState].label : "—"}
-            hint={stats.data.index_note || stats.data.retriever_mode}
-            icon={<Database className="size-3.5" />}
-            tone={indexState ? INDEX_META[indexState].tone : "neutral"}
-          />
-          <CompactMetric
-            label="最近更新"
-            value={formatDateTime(stats.data.last_indexed_at, true)}
-            hint={
-              stats.data.last_indexed_at
-                ? formatRelative(stats.data.last_indexed_at)
-                : "尚未建立索引"
-            }
-            icon={<Clock className="size-3.5" />}
-          />
-        </div>
+        <Card surface="subtle" className="grid grid-cols-2 overflow-hidden sm:grid-cols-4">
+          <div className={METRIC_CELL[0]}>
+            <CompactMetric
+              label="文档"
+              value={formatCount(stats.data.document_count)}
+              hint={`${stats.data.indexed_document_count} 个已索引`}
+              icon={<FileStack className="size-3.5" />}
+              tone="accent"
+              className={METRIC_INNER}
+            />
+          </div>
+          <div className={METRIC_CELL[1]}>
+            <CompactMetric
+              label="知识块"
+              value={formatCount(stats.data.chunk_count)}
+              hint={`${stats.data.vectorized_chunk_count} 个已向量化`}
+              icon={<Layers className="size-3.5" />}
+              className={METRIC_INNER}
+            />
+          </div>
+          <div className={METRIC_CELL[2]}>
+            <CompactMetric
+              label="索引状态"
+              value={indexState ? INDEX_META[indexState].label : "—"}
+              hint={stats.data.index_note || stats.data.retriever_mode}
+              icon={<Database className="size-3.5" />}
+              tone={indexState ? INDEX_META[indexState].tone : "neutral"}
+              className={METRIC_INNER}
+            />
+          </div>
+          <div className={METRIC_CELL[3]}>
+            <CompactMetric
+              label="最近更新"
+              value={formatDateTime(stats.data.last_indexed_at, true)}
+              hint={
+                stats.data.last_indexed_at
+                  ? formatRelative(stats.data.last_indexed_at)
+                  : "尚未建立索引"
+              }
+              icon={<Clock className="size-3.5" />}
+              className={METRIC_INNER}
+            />
+          </div>
+        </Card>
       ) : stats.status === "loading" ? (
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <Card surface="subtle" className="grid grid-cols-2 overflow-hidden sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-16 rounded-[var(--radius-md)]" />
+            <div key={index} className={METRIC_CELL[index]}>
+              <Skeleton className="h-2.5 w-12" />
+              <Skeleton className="mt-1.5 h-5 w-16" />
+              <Skeleton className="mt-1 h-2.5 w-20" />
+            </div>
           ))}
-        </div>
+        </Card>
       ) : null}
 
       {/* ------------------------------------- search + filter → upload CTA */}
@@ -305,7 +343,17 @@ export default function DocumentsPage() {
             </Field>
           </div>
 
-          <div
+          {/*
+            A native <label> wrapping the file input rather than a clickable
+            <div>: the input stays in the tab order (just visually hidden), so
+            the zone is reachable and operable by keyboard (Enter / Space open
+            the picker) instead of being mouse-only. The input is associated by
+            nesting alone — adding htmlFor on top of a nested control can make
+            some browsers fire the activation twice. In read-only mode the input
+            is `disabled`, so it drops out of the tab order and clicking the
+            label does nothing — the zone stays genuinely inert.
+          */}
+          <label
             onDragOver={(event) => {
               event.preventDefault();
               if (!readOnly) setDragging(true);
@@ -320,34 +368,38 @@ export default function DocumentsPage() {
               }
               void handleFiles(event.dataTransfer.files);
             }}
-            onClick={() => !readOnly && fileInput.current?.click()}
             className={cn(
-              "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[var(--radius-lg)] border border-dashed px-6 py-5 text-center transition-colors",
+              "flex flex-col items-center justify-center gap-1.5 rounded-[var(--radius-lg)] border border-dashed px-6 py-5 text-center transition-colors",
+              "focus-within:outline-solid focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-accent)]",
               dragging
                 ? "border-[var(--color-accent)] bg-[var(--color-accent-soft)]"
-                : "border-[var(--color-line-strong)] hover:border-[var(--color-accent-line)] hover:bg-[var(--color-surface-sunken)]",
-              readOnly && "cursor-not-allowed opacity-60",
+                : "border-[var(--color-line-strong)]",
+              readOnly
+                ? "cursor-not-allowed opacity-60"
+                : "cursor-pointer hover:border-[var(--color-accent-line)] hover:bg-[var(--color-surface-sunken)]",
             )}
           >
             <UploadCloud className="size-5 text-[var(--color-ink-faint)]" />
-            <p className="text-sm text-[var(--color-ink-soft)]">
+            <span className="block text-sm text-[var(--color-ink-soft)]">
               {uploading ? `正在上传 ${uploading}…` : "拖拽文件到此处，或点击选择文件"}
-            </p>
-            <p className="text-2xs text-[var(--color-ink-faint)]">
+            </span>
+            <span className="block text-2xs text-[var(--color-ink-faint)]">
               上限 {(maxBytes / 1024 / 1024).toFixed(0)} MB · 文件名为安全化处理后的名称
-            </p>
+            </span>
             <input
+              id={UPLOAD_INPUT_ID}
               ref={fileInput}
               type="file"
               multiple
-              hidden
+              disabled={readOnly}
               accept=".md,.markdown,.txt,.pdf,.docx"
+              className="sr-only"
               onChange={(event) => {
                 void handleFiles(event.target.files);
                 event.target.value = "";
               }}
             />
-          </div>
+          </label>
 
           {uploadError ? <InlineError message={uploadError} /> : null}
         </MainTaskBody>
@@ -375,7 +427,7 @@ export default function DocumentsPage() {
             <ul className="space-y-2 md:hidden">
               {documents.data.items.map((doc) => (
                 <li key={doc.id}>
-                  <div className="flex items-stretch gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+                  <div className="flex items-stretch gap-1.5 rounded-[var(--radius-md)] border border-[var(--color-line-faint)] surface-base">
                     <button
                       type="button"
                       onClick={() => setDetailId(doc.id)}
@@ -441,80 +493,103 @@ export default function DocumentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {documents.data.items.map((doc) => (
-                    <TR key={doc.id} onClick={() => setDetailId(doc.id)}>
-                      <TD>
-                        <button
-                          type="button"
-                          onClick={() => setDetailId(doc.id)}
-                          className="block max-w-[22rem] truncate text-left text-xs font-medium text-[var(--color-ink)] hover:text-[var(--color-accent)]"
-                          title={doc.name}
-                        >
-                          {doc.name}
-                        </button>
-                        {doc.tags.length > 0 ? (
-                          <span className="mt-1 flex flex-wrap gap-1">
-                            {doc.tags.slice(0, 3).map((tag) => (
-                              <span
-                                key={tag}
-                                className="rounded-[var(--radius-xs)] bg-[var(--color-surface-sunken)] px-1.5 py-0.5 text-2xs text-[var(--color-ink-faint)]"
+                  {documents.data.items.map((doc) => {
+                    const selected = detailId === doc.id;
+                    return (
+                      <TR
+                        key={doc.id}
+                        onClick={() => setDetailId(doc.id)}
+                        className={cn("group", selected && "bg-[var(--color-accent-soft)]")}
+                      >
+                        <TD>
+                          <div className="flex items-start gap-2.5">
+                            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-surface-inset)] text-[var(--color-ink-muted)]">
+                              <FileText className="size-3.5" />
+                            </span>
+                            <span className="min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => setDetailId(doc.id)}
+                                className={cn(
+                                  "block max-w-[22rem] truncate text-left text-xs font-medium hover:text-[var(--color-accent)]",
+                                  selected
+                                    ? "text-[var(--color-accent-ink)]"
+                                    : "text-[var(--color-ink)]",
+                                )}
+                                title={doc.name}
                               >
-                                {tag}
-                              </span>
-                            ))}
+                                {doc.name}
+                              </button>
+                              {doc.tags.length > 0 ? (
+                                <span className="mt-1 flex flex-wrap gap-1">
+                                  {doc.tags.slice(0, 3).map((tag) => (
+                                    <span
+                                      key={tag}
+                                      className="rounded-[var(--radius-xs)] bg-[var(--color-surface-sunken)] px-1.5 py-0.5 text-2xs text-[var(--color-ink-faint)]"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </span>
+                              ) : null}
+                            </span>
+                          </div>
+                        </TD>
+                        <TD>
+                          <span className="text-2xs text-[var(--color-ink-muted)]">
+                            {doc.type_label}
                           </span>
-                        ) : null}
-                      </TD>
-                      <TD>
-                        <span className="text-xs">{doc.type_label}</span>
-                      </TD>
-                      <TD>
-                        <Badge tone="neutral">{doc.category_label}</Badge>
-                      </TD>
-                      <TD align="right" mono>
-                        {doc.chunk_count}
-                      </TD>
-                      <TD align="right" mono>
-                        {doc.size_human}
-                      </TD>
-                      <TD>
-                        <span className="inline-flex items-center gap-1.5">
-                          <StatusDot tone={STATUS_TONE[doc.status]} />
-                          <span className="text-xs">{doc.status_label}</span>
-                        </span>
-                      </TD>
-                      <TD>
-                        <span className="text-2xs text-[var(--color-ink-muted)]">
-                          {formatDateTime(doc.modified_at)}
-                        </span>
-                      </TD>
-                      <TD align="right">
-                        <span
-                          className="flex justify-end gap-1"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <Link href={`/knowledge/explorer?doc=${encodeURIComponent(doc.id)}`}>
-                            <Button size="icon" variant="ghost" title="在 Explorer 中查看">
-                              <ExternalLink className="size-3.5" />
-                            </Button>
-                          </Link>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            title={readOnly ? "只读模式，不可删除" : "删除文档"}
-                            disabled={readOnly || deleting === doc.id}
-                            onClick={() => void remove(doc.id, doc.name)}
+                        </TD>
+                        <TD>
+                          <Badge tone="neutral">{doc.category_label}</Badge>
+                        </TD>
+                        <TD align="right" mono>
+                          <span className="text-[var(--color-ink-soft)]">{doc.chunk_count}</span>
+                        </TD>
+                        <TD align="right" mono>
+                          <span className="text-[var(--color-ink-soft)]">{doc.size_human}</span>
+                        </TD>
+                        <TD>
+                          <span className="inline-flex items-center gap-1.5">
+                            <StatusDot tone={STATUS_TONE[doc.status]} />
+                            <span className="text-xs text-[var(--color-ink-soft)]">
+                              {doc.status_label}
+                            </span>
+                          </span>
+                        </TD>
+                        <TD>
+                          <span className="text-2xs text-[var(--color-ink-muted)]">
+                            {formatDateTime(doc.modified_at)}
+                          </span>
+                        </TD>
+                        <TD align="right">
+                          <span
+                            className="flex justify-end gap-1 opacity-0 transition-opacity duration-[var(--motion-fast)] ease-[var(--ease-standard)] group-hover:opacity-100 focus-within:opacity-100"
+                            onClick={(event) => event.stopPropagation()}
                           >
-                            {deleting === doc.id ? (
-                              <AlertTriangle className="size-3.5 text-[var(--color-warning)]" />
-                            ) : (
-                              <Trash2 className="size-3.5 text-[var(--color-danger)]" />
-                            )}
-                          </Button>
-                        </span>
-                      </TD>
-                    </TR>
-                  ))}
+                            <Link href={`/knowledge/explorer?doc=${encodeURIComponent(doc.id)}`}>
+                              <Button size="icon" variant="ghost" title="在 Explorer 中查看">
+                                <ExternalLink className="size-3.5" />
+                              </Button>
+                            </Link>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              title={readOnly ? "只读模式，不可删除" : "删除文档"}
+                              disabled={readOnly || deleting === doc.id}
+                              onClick={() => void remove(doc.id, doc.name)}
+                            >
+                              {deleting === doc.id ? (
+                                <AlertTriangle className="size-3.5 text-[var(--color-warning)]" />
+                              ) : (
+                                <Trash2 className="size-3.5 text-[var(--color-danger)]" />
+                              )}
+                            </Button>
+                          </span>
+                        </TD>
+                      </TR>
+                    );
+                  })}
                 </tbody>
               </Table>
             </div>
@@ -616,30 +691,35 @@ export default function DocumentsPage() {
           <ErrorState error={detail.error} onRetry={detail.reload} />
         ) : detailData ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-              <div>
-                <DefRow label="类型">{detailData.type_label}</DefRow>
-                <DefRow label="分类">{detailData.category_label}</DefRow>
-                <DefRow label="文件大小">{detailData.size_human}</DefRow>
-                <DefRow label="字符数">{formatCount(detailData.char_count ?? 0)}</DefRow>
+            {/* header: file metadata sits on its own recessed surface so the
+                body below reads as the document, not as another metadata row. */}
+            <Card surface="subtle" className="px-3.5 py-3">
+              <SectionLabel>元数据</SectionLabel>
+              <div className="mt-1.5 grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                <div>
+                  <DefRow label="类型">{detailData.type_label}</DefRow>
+                  <DefRow label="分类">{detailData.category_label}</DefRow>
+                  <DefRow label="文件大小">{detailData.size_human}</DefRow>
+                  <DefRow label="字符数">{formatCount(detailData.char_count ?? 0)}</DefRow>
+                </div>
+                <div>
+                  <DefRow label="状态">{detailData.status_label}</DefRow>
+                  <DefRow label="参与检索">{detailData.searchable ? "是" : "否"}</DefRow>
+                  <DefRow label="修改时间">{formatDateTime(detailData.modified_at)}</DefRow>
+                  <DefRow label="创建时间">{formatDateTime(detailData.created_at)}</DefRow>
+                </div>
               </div>
-              <div>
-                <DefRow label="状态">{detailData.status_label}</DefRow>
-                <DefRow label="参与检索">{detailData.searchable ? "是" : "否"}</DefRow>
-                <DefRow label="修改时间">{formatDateTime(detailData.modified_at)}</DefRow>
-                <DefRow label="创建时间">{formatDateTime(detailData.created_at)}</DefRow>
-              </div>
-            </div>
 
-            {detailData.tags.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {detailData.tags.map((tag) => (
-                  <Badge key={tag} tone="neutral">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            ) : null}
+              {detailData.tags.length > 0 ? (
+                <div className="mt-2.5 flex flex-wrap gap-1">
+                  {detailData.tags.map((tag) => (
+                    <Badge key={tag} tone="neutral">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+            </Card>
 
             {detailData.summary ? (
               <div>
@@ -654,7 +734,7 @@ export default function DocumentsPage() {
               <SectionLabel>
                 {detailData.content_truncated ? "正文（内容过长，仅显示前 200,000 字符）" : "正文"}
               </SectionLabel>
-              <div className="mt-1.5 max-h-[26rem] overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-3">
+              <div className="mt-1.5 max-h-[26rem] overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-line-faint)] surface-inset px-3.5 py-3">
                 <Markdown content={truncate(detailData.content, 12000) || "（空文档）"} />
               </div>
             </div>
@@ -669,7 +749,7 @@ export default function DocumentsPage() {
                   {detailData.chunks.map((chunk) => (
                     <div
                       key={chunk.chunk_id}
-                      className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2.5"
+                      className="rounded-[var(--radius-md)] border border-[var(--color-line-faint)] surface-subtle px-3 py-2.5"
                     >
                       <div className="flex items-center gap-2">
                         <span className="flex size-5 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-surface-sunken)] font-mono text-[10px] text-[var(--color-ink-muted)]">

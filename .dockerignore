@@ -11,8 +11,16 @@
 # --- secrets: never bake an env file into an image ---------------------------
 # `env_file` in docker-compose feeds the container at RUNTIME, from the host.
 # Nothing env-shaped belongs in the build context.
+#
+# The two bare patterns below only cover the build-context ROOT. Nested files
+# such as `apps/web/.env.local` were therefore NOT excluded — a real gap that
+# this project already hit once: `API_PROXY_TARGET` in that file is read by
+# Next at build time and gets baked into the image, silently pointing the proxy
+# at 127.0.0.1. The `**/` forms close it for every depth.
 .env
 .env.*
+**/.env
+**/.env.*
 *.pem
 
 # --- python ------------------------------------------------------------------

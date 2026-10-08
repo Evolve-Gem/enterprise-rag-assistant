@@ -37,12 +37,16 @@ export function GenerationState({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-5",
+        // Same surface the answer will land on, so the transition reads as the
+        // result "arriving in place" rather than a card being swapped out.
+        "surface-result rounded-[var(--radius-large)] border border-[var(--color-line-brand)] p-5",
         className,
       )}
     >
       <div className="flex items-start gap-5">
-        <KnowledgeMascot state={current.mascot} size={80} />
+        <div className="animate-breathe shrink-0">
+          <KnowledgeMascot state={current.mascot} size={80} />
+        </div>
 
         <div className="min-w-0 flex-1">
           {question ? (
@@ -56,7 +60,13 @@ export function GenerationState({
               const done = index < stage;
               const active = index === stage;
               return (
-                <li key={item.key} className="flex items-center gap-2.5 text-xs">
+                <li
+                  key={item.key}
+                  className={cn(
+                    "-mx-2 flex items-center gap-2.5 rounded-[var(--radius-small)] px-2 py-0.5 text-xs transition-colors duration-[var(--motion-normal)] ease-[var(--ease-standard)]",
+                    active && "bg-[var(--color-accent-soft)]",
+                  )}
+                >
                   <span
                     className={cn(
                       "flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors",
@@ -98,7 +108,6 @@ export function GenerationState({
       <div className="mt-5 space-y-2.5">
         <Skeleton className="h-3 w-11/12" />
         <Skeleton className="h-3 w-10/12" />
-        <Skeleton className="h-3 w-9/12" />
         <Skeleton className="h-3 w-7/12" />
       </div>
     </div>

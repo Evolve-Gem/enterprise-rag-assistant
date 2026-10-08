@@ -40,12 +40,14 @@ export function AnswerCard({
   return (
     <article
       className={cn(
-        "overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]",
+        // The AI result surface: a 1% brand wash plus a brand hairline so it
+        // never reads as "just another white card" against the composer.
+        "surface-result overflow-hidden rounded-[var(--radius-large)] border border-[var(--color-line-brand)]",
         className,
       )}
     >
       {/* provenance strip */}
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--color-line)] px-5 py-3">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--color-line-faint)] px-5 py-3">
         {response.grounded ? (
           <Badge tone="success">
             <CheckCircle2 className="size-3" />
@@ -96,7 +98,7 @@ export function AnswerCard({
 
       {/* source chips */}
       {response.sources.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--color-line)] px-5 py-3">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--color-line-faint)] px-5 py-3">
           <span className="flex items-center gap-1.5 text-2xs font-medium text-[var(--color-ink-faint)]">
             <FileText className="size-3" />
             来源
@@ -107,7 +109,7 @@ export function AnswerCard({
               type="button"
               onClick={() => onCitation?.(source.citation_indexes[0])}
               title={`${source.chunk_count} 处引用 · 最高分 ${source.best_score.toFixed(3)}`}
-              className="flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-2.5 py-1 text-2xs text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent-ink)]"
+              className="lift flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1 text-2xs text-[var(--color-ink-soft)] hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent-ink)]"
             >
               <Link2 className="size-3" />
               <span className="max-w-[14rem] truncate">{source.document_name}</span>
@@ -118,7 +120,7 @@ export function AnswerCard({
       ) : null}
 
       {/* details */}
-      <div className="border-t border-[var(--color-line)]">
+      <div className="border-t border-[var(--color-line-faint)]">
         <Tabs<DetailTab>
           value={tab}
           onChange={setTab}
@@ -157,7 +159,7 @@ export function AnswerCard({
                     key={citation.chunk_id}
                     type="button"
                     onClick={() => onCitation?.(citation.index)}
-                    className="flex w-full gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-3 text-left transition-colors hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)]/40"
+                    className="lift flex w-full gap-3 rounded-[var(--radius-medium)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-3 text-left hover:border-[var(--color-accent-line)]"
                   >
                     <span className="flex size-5 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-accent-soft)] font-mono text-[10px] font-semibold text-[var(--color-accent-ink)]">
                       {citation.index}
@@ -194,22 +196,25 @@ export function AnswerCard({
 /** Placeholder shown before the first question is asked. */
 export function AnswerPlaceholder({ hints }: { hints: string[] }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface)] px-6 py-14 text-center">
-      <span className="flex size-11 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-        <Wand2 className="size-5" />
+    // Was a dashed-strong box at py-14: the single largest dead area in the
+    // product (~340px of empty panel to say one sentence), and the only dashed
+    // outline left after the shared empty states moved to a quiet surface.
+    <div className="surface-subtle flex flex-col items-center gap-3 rounded-[var(--radius-large)] border border-[var(--color-line-faint)] px-6 py-7 text-center">
+      <span className="flex size-9 items-center justify-center rounded-full bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+        <Wand2 className="size-4" />
       </span>
       <div className="space-y-1">
-        <p className="text-sm font-medium text-[var(--color-ink)]">开始提问</p>
-        <p className="text-xs text-[var(--color-ink-muted)]">
+        <p className="text-[13px] font-medium text-[var(--color-ink)]">开始提问</p>
+        <p className="mx-auto max-w-md text-xs leading-relaxed text-[var(--color-ink-muted)]">
           回答会标注引用编号，点击编号可查看被引用的原文片段与检索分数。
         </p>
       </div>
       {hints.length > 0 ? (
-        <div className="mt-1 flex flex-wrap justify-center gap-2">
+        <div className="mt-0.5 flex flex-wrap items-center justify-center gap-1.5">
           {hints.map((hint) => (
             <span
               key={hint}
-              className="rounded-full border border-[var(--color-line)] px-3 py-1 text-2xs text-[var(--color-ink-muted)]"
+              className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1 text-2xs text-[var(--color-ink-muted)]"
             >
               {hint}
             </span>

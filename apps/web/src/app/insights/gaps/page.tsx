@@ -86,10 +86,44 @@ export default function GapsPage() {
                   { label: "缺失", value: report.missing.length, color: "var(--color-danger)" },
                 ]}
               />
-              <p className="text-2xs text-[var(--color-ink-muted)]">
-                已覆盖 {report.covered.length} · 部分覆盖 {report.partial.length} · 缺失{" "}
-                {report.missing.length}（期望类型共 {totalTypes}）
-              </p>
+              {/* Colour alone is not a label: each state keeps its icon, its
+                  Chinese name and its count next to the bar. */}
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
+                {(
+                  [
+                    ["covered", report.covered.length],
+                    ["partial", report.partial.length],
+                    ["missing", report.missing.length],
+                  ] as const
+                ).map(([key, count]) => {
+                  const meta = STATUS_META[key];
+                  const Icon = meta.icon;
+                  return (
+                    <span
+                      key={key}
+                      className="inline-flex items-center gap-1.5 text-2xs text-[var(--color-ink-muted)]"
+                    >
+                      <Icon
+                        className={cn(
+                          "size-3.5 shrink-0",
+                          key === "covered"
+                            ? "text-[var(--color-success)]"
+                            : key === "partial"
+                              ? "text-[var(--color-warning)]"
+                              : "text-[var(--color-danger)]",
+                        )}
+                      />
+                      <span className="text-[var(--color-ink-soft)]">{meta.label}</span>
+                      <span className="font-mono tabular-nums text-[var(--color-ink)]">
+                        {count}
+                      </span>
+                    </span>
+                  );
+                })}
+                <span className="text-2xs text-[var(--color-ink-faint)]">
+                  期望类型共 {totalTypes}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -147,19 +181,7 @@ export default function GapsPage() {
         ) : (
           <div className="space-y-1.5">
             {topRecommendations.map((item, index) => (
-              <div
-                key={`${item.category}-${index}`}
-                className="flex flex-wrap items-start gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-2.5"
-              >
-                <Badge tone={item.priority === "P0" ? "danger" : "warning"}>{item.priority}</Badge>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-[var(--color-ink)]">{item.title}</p>
-                  <p className="mt-0.5 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
-                    {item.reason}
-                  </p>
-                </div>
-                <span className="shrink-0 text-2xs text-[var(--color-ink-faint)]">{item.owner}</span>
-              </div>
+              <RecommendationRow key={`${item.category}-${index}`} item={item} />
             ))}
           </div>
         )}
@@ -173,19 +195,7 @@ export default function GapsPage() {
         >
           <div className="space-y-1.5">
             {restRecommendations.map((item, index) => (
-              <div
-                key={`${item.category}-rest-${index}`}
-                className="flex flex-wrap items-start gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-2.5"
-              >
-                <Badge tone={item.priority === "P0" ? "danger" : "warning"}>{item.priority}</Badge>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-[var(--color-ink)]">{item.title}</p>
-                  <p className="mt-0.5 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
-                    {item.reason}
-                  </p>
-                </div>
-                <span className="shrink-0 text-2xs text-[var(--color-ink-faint)]">{item.owner}</span>
-              </div>
+              <RecommendationRow key={`${item.category}-rest-${index}`} item={item} />
             ))}
           </div>
         </SectionAccordion>
@@ -274,6 +284,52 @@ export default function GapsPage() {
           })}
         </div>
       </SectionAccordion>
+    </div>
+  );
+}
+
+/**
+ * One "what to add" item.
+ *
+ * Reads as an instruction rather than a log line: an icon and a priority badge
+ * carry the urgency, the title states the document to add, and the reason sits
+ * underneath as the supporting line.
+ */
+function RecommendationRow({
+  item,
+}: {
+  item: GapReport["recommended_documents"][number];
+}) {
+  const urgent = item.priority === "P0";
+  return (
+    <div
+      className={cn(
+        "flex items-start gap-3 rounded-[var(--radius-md)] border px-3.5 py-2.5",
+        urgent
+          ? "border-[var(--color-danger-line)] surface-subtle"
+          : "border-[var(--color-line-faint)] surface-subtle",
+      )}
+    >
+      <span
+        className={cn(
+          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)]",
+          urgent
+            ? "bg-[var(--color-danger-soft)] text-[var(--color-danger)]"
+            : "bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
+        )}
+      >
+        <FilePlus2 className="size-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[13px] font-medium text-[var(--color-ink)]">{item.title}</p>
+          <Badge tone={urgent ? "danger" : "warning"}>{item.priority}</Badge>
+        </div>
+        <p className="mt-0.5 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+          {item.reason}
+        </p>
+      </div>
+      <span className="shrink-0 text-2xs text-[var(--color-ink-faint)]">{item.owner}</span>
     </div>
   );
 }

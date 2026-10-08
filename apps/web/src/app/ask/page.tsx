@@ -133,7 +133,10 @@ export default function AskPage() {
       ) : null}
 
       {/* ------------------------------------------------------ composer */}
-      <Card>
+      <Card
+        surface="raised"
+        className="transition-[box-shadow,border-color] duration-[var(--motion-normal)] ease-[var(--ease-standard)] focus-within:border-[var(--color-accent-line)] focus-within:shadow-[var(--elevation-2),0_0_0_4px_var(--color-brand-glow)]"
+      >
         <CardContent className="space-y-3">
           <div className="relative">
             <Textarea
@@ -177,7 +180,7 @@ export default function AskPage() {
                   setQuestion(example);
                   inputRef.current?.focus();
                 }}
-                className="rounded-full border border-[var(--color-line)] px-2.5 py-1 text-2xs text-[var(--color-ink-muted)] transition-colors hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent-ink)]"
+                className="lift rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1 text-2xs text-[var(--color-ink-muted)] hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent-ink)]"
               >
                 {example}
               </button>
@@ -272,7 +275,7 @@ export default function AskPage() {
       {loading ? <GenerationState stage={stage} question={question || undefined} /> : null}
 
       {!loading && response ? (
-        <div className="space-y-3">
+        <div className="animate-reveal space-y-3">
           <AnswerCard response={response} onCitation={openCitation} />
 
           <StepNote
@@ -318,7 +321,7 @@ export default function AskPage() {
 
       {/* session history */}
       {turns.length > 1 ? (
-        <Card>
+        <Card surface="subtle">
           <CardContent className="space-y-1.5">
             <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-faint)]">
               <Sparkles className="size-3" />
@@ -384,7 +387,7 @@ function TechnicalDetails({ response }: { response: RagQueryResponse }) {
   ];
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+    <div className="surface-subtle rounded-[var(--radius-medium)] border border-[var(--color-line-faint)]">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

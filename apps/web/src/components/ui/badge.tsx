@@ -4,7 +4,7 @@ type Tone = "neutral" | "accent" | "success" | "warning" | "danger" | "info";
 
 const TONE: Record<Tone, string> = {
   neutral:
-    "bg-[var(--color-surface-sunken)] text-[var(--color-ink-muted)] border-[var(--color-line)]",
+    "bg-[var(--color-surface-subtle)] text-[var(--color-ink-muted)] border-[var(--color-line-faint)]",
   accent:
     "bg-[var(--color-accent-soft)] text-[var(--color-accent-ink)] border-[var(--color-accent-line)]",
   success:
@@ -81,7 +81,7 @@ export function CodeChip({
   return (
     <code
       className={cn(
-        "rounded-[var(--radius-xs)] border border-[var(--color-line)] bg-[var(--color-surface-sunken)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-ink-muted)]",
+        "rounded-[var(--radius-xs)] border border-[var(--color-line-faint)] bg-[var(--color-surface-inset)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-ink-muted)]",
         className,
       )}
     >
@@ -93,7 +93,7 @@ export function CodeChip({
 /** `<kbd>` hint. */
 export function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded-[var(--radius-xs)] border border-[var(--color-line-strong)] bg-[var(--color-surface-raised)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-ink-muted)]">
+    <kbd className="rounded-[var(--radius-xs)] border border-[var(--color-line)] bg-[var(--color-surface-inset)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-ink-muted)]">
       {children}
     </kbd>
   );

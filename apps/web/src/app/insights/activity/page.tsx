@@ -1,32 +1,116 @@
 "use client";
 
-import { Activity, ChartColumn, Filter, Gauge, RefreshCw, ShieldCheck } from "lucide-react";
-import { useCallback, useState } from "react";
+import {
+  Activity,
+  ChartColumn,
+  Cpu,
+  Database,
+  FileText,
+  Filter,
+  FlaskConical,
+  Gauge,
+  MessagesSquare,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Workflow,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Badge, CodeChip, StatusDot } from "@/components/ui/badge";
+import { CodeChip } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { BarChart, StatCard, TD, TH, TR, Table } from "@/components/ui/data";
+import { BarChart, StatCard } from "@/components/ui/data";
 import { Field, Select } from "@/components/ui/field";
 import { SectionAccordion } from "@/components/ui/section";
-import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/states";
+import { EmptyState, ErrorState, InlineError, SkeletonRows } from "@/components/ui/states";
 import { useToast } from "@/components/providers/toast-provider";
 import { api } from "@/lib/api";
 import { useAsync } from "@/lib/hooks";
-import { ACTIVITY_KIND_LABELS, formatMs, formatPercent, formatRelative, vizColor } from "@/lib/utils";
+import type { ActivityRecord } from "@/lib/types";
+import {
+  ACTIVITY_KIND_LABELS,
+  cn,
+  formatMs,
+  formatPercent,
+  formatRelative,
+  vizColor,
+} from "@/lib/utils";
+
+/** Icon per activity kind — the timeline's lead glyph. */
+const KIND_ICON: Record<string, typeof Activity> = {
+  rag_query: Search,
+  chat: MessagesSquare,
+  agent_run: Workflow,
+  solution: FileText,
+  evaluation: FlaskConical,
+  knowledge: Database,
+  system: Cpu,
+};
+
+/** Icon bubble tint per status, paired with a dot + word in the body. */
+const STATUS_BUBBLE: Record<string, string> = {
+  success:
+    "border-[var(--color-success-line)] bg-[var(--color-success-soft)] text-[var(--color-success)]",
+  failed:
+    "border-[var(--color-danger-line)] bg-[var(--color-danger-soft)] text-[var(--color-danger)]",
+  warning:
+    "border-[var(--color-warning-line)] bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
+};
+
+function statusTone(status: string): "success" | "danger" | "warning" {
+  if (status === "success") return "success";
+  if (status === "failed") return "danger";
+  return "warning";
+}
+
+/**
+ * Chinese status word.
+ *
+ * The row used to carry three encodings of the same fact — a tinted bubble, a
+ * coloured dot and the raw English enum. The bubble keeps the colour, this
+ * keeps the word, and the dot is gone; a Chinese product should not surface
+ * `success` / `failed` as user-facing text.
+ */
+const STATUS_LABEL: Record<string, string> = {
+  success: "成功",
+  failed: "失败",
+  warning: "警告",
+};
+
+/** Newest-first page size for the ledger; "load more" pulls the next page. */
+const ACTIVITY_PAGE_SIZE = 20;
 
 export default function ActivityPage() {
   const { toast } = useToast();
   const [kind, setKind] = useState("");
   const [status, setStatus] = useState("");
 
+  // Only the newest page is fetched up front. Rendering the whole history sent
+  // the page well past 14,000 px tall and made the DOM (not just the viewport)
+  // the bottleneck, so the remaining records are pulled in on demand below.
   const records = useAsync(
-    () => api.activity({ kind, status, limit: 120 }),
+    () => api.activity({ kind, status, offset: 0, limit: ACTIVITY_PAGE_SIZE }),
     [kind, status],
   );
+
+  // Pages appended by "load more". Held separately from the first page so a
+  // filter change simply drops back to the newest 20.
+  const [extra, setExtra] = useState<ActivityRecord[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState<string | null>(null);
+
   const stats = useAsync(() => api.activityStats(30), []);
 
+  // Filter changes reset the ledger to the newest page.
+  useEffect(() => {
+    setExtra([]);
+    setMoreError(null);
+  }, [kind, status]);
+
   const reloadAll = useCallback(() => {
+    setExtra([]);
+    setMoreError(null);
     void records.reload();
     void stats.reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -43,11 +127,47 @@ export default function ActivityPage() {
     }
   }, [toast, reloadAll]);
 
+  // `records` is memoized by the async hook, so this stays referentially stable
+  // unless the page or the appended set actually changed — which keeps
+  // `loadMore` below from being rebuilt on every render.
+  const items = useMemo(
+    () => (records.status === "success" ? [...records.data.items, ...extra] : extra),
+    [records, extra],
+  );
+  const total = records.status === "success" ? records.data.total : 0;
+  const hasMore = records.status === "success" && items.length < total;
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || records.status !== "success") return;
+    setLoadingMore(true);
+    setMoreError(null);
+    try {
+      const page = await api.activity({
+        kind,
+        status,
+        offset: items.length,
+        limit: ACTIVITY_PAGE_SIZE,
+      });
+      // Records are created continuously, so a page boundary can repeat an id
+      // that has since shifted; de-duplicate to keep React keys unique.
+      setExtra((previous) => {
+        const seen = new Set(items.map((record) => record.id));
+        return [...previous, ...page.items.filter((record) => !seen.has(record.id))];
+      });
+    } catch (caught) {
+      setMoreError(caught instanceof Error ? caught.message : "加载更多失败，请重试。");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, records.status, kind, status, items]);
+
   return (
     <div className="space-y-5">
       {/* ------------------------------------------------------------ stats */}
       {stats.status === "success" ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        // Two columns on a phone: four full-width cards meant four screens of
+        // scrolling to read four numbers.
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <StatCard
             label="总记录"
             value={stats.data.total}
@@ -72,6 +192,7 @@ export default function ActivityPage() {
             label="P95 延迟"
             value={formatMs(stats.data.p95_latency_ms)}
             hint="长尾指标，反映最慢的一批请求"
+            icon={<ChartColumn className="size-4" />}
           />
         </div>
       ) : null}
@@ -198,96 +319,129 @@ export default function ActivityPage() {
             <SkeletonRows count={8} />
           ) : records.status === "error" ? (
             <ErrorState error={records.error} onRetry={records.reload} />
-          ) : records.data.items.length === 0 ? (
+          ) : items.length === 0 ? (
             <EmptyState
               icon={<Activity className="size-5" />}
               title="没有活动记录"
               description="发起一次问答、Agent 运行或方案生成后，这里会出现真实记录。"
             />
           ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <TH>时间</TH>
-                  <TH>类型</TH>
-                  <TH>标题</TH>
-                  <TH>意图 / Skill</TH>
-                  <TH>Tool</TH>
-                  <TH align="right">引用</TH>
-                  <TH align="right">耗时</TH>
-                  <TH>状态</TH>
-                </tr>
-              </thead>
-              <tbody>
-                {records.data.items.map((item) => (
-                  <TR key={item.id}>
-                    <TD>
-                      <span className="text-2xs text-[var(--color-ink-muted)]" title={item.created_at}>
-                        {formatRelative(item.created_at)}
-                      </span>
-                    </TD>
-                    <TD>
-                      <Badge tone="neutral">
-                        {ACTIVITY_KIND_LABELS[item.kind] ?? item.kind}
-                      </Badge>
-                    </TD>
-                    <TD>
-                      <span className="block max-w-[24rem] truncate text-xs text-[var(--color-ink)]" title={item.title}>
-                        {item.title}
-                      </span>
-                      {item.source_names.length > 0 ? (
-                        <span className="mt-0.5 block max-w-[24rem] truncate text-2xs text-[var(--color-ink-faint)]">
-                          来源：{item.source_names.join("、")}
+            <div className="space-y-4">
+              <ol className="relative space-y-2">
+                {items.map((item, index) => {
+                  const Icon = KIND_ICON[item.kind] ?? Activity;
+                  const tone = statusTone(item.status);
+                  return (
+                    <li key={item.id} className="flex gap-3">
+                      <span className="flex w-7 shrink-0 flex-col items-center">
+                        <span
+                          className={cn(
+                            "flex size-7 items-center justify-center rounded-full border",
+                            STATUS_BUBBLE[tone],
+                          )}
+                        >
+                          <Icon className="size-3.5" />
                         </span>
-                      ) : null}
-                    </TD>
-                    <TD>
-                      <span className="flex flex-wrap gap-1">
-                        {item.intent ? <CodeChip>{item.intent}</CodeChip> : null}
-                        {item.skill ? <CodeChip>{item.skill.replace(/_skill$/, "")}</CodeChip> : null}
-                      </span>
-                    </TD>
-                    <TD>
-                      <span className="flex flex-wrap gap-1">
-                        {item.tools.slice(0, 3).map((tool) => (
-                          <CodeChip key={tool}>{tool}</CodeChip>
-                        ))}
-                        {item.tools.length > 3 ? (
-                          <span className="text-2xs text-[var(--color-ink-faint)]">
-                            +{item.tools.length - 3}
-                          </span>
+                        {index < items.length - 1 ? (
+                          <span
+                            aria-hidden
+                            className="mt-1 w-px flex-1 bg-[var(--color-line-faint)]"
+                          />
                         ) : null}
                       </span>
-                    </TD>
-                    <TD align="right" mono>
-                      {item.citation_count}
-                    </TD>
-                    <TD align="right" mono>
-                      {formatMs(item.latency_ms)}
-                    </TD>
-                    <TD>
-                      <span className="inline-flex items-center gap-1.5">
-                        <StatusDot
-                          tone={
-                            item.status === "success"
-                              ? "success"
-                              : item.status === "failed"
-                                ? "danger"
-                                : "warning"
-                          }
-                        />
-                        <span className="text-xs">{item.status}</span>
-                      </span>
-                      {item.error ? (
-                        <span className="mt-0.5 block max-w-[12rem] truncate text-2xs text-[var(--color-danger)]" title={item.error}>
-                          {item.error}
-                        </span>
-                      ) : null}
-                    </TD>
-                  </TR>
-                ))}
-              </tbody>
-            </Table>
+
+                      <div className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--color-line-faint)] surface-subtle px-3 py-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <p
+                            className="min-w-0 flex-1 truncate text-xs font-medium text-[var(--color-ink)]"
+                            title={item.title}
+                          >
+                            {item.title}
+                          </p>
+                          <div className="shrink-0 text-right">
+                            <p
+                              className="text-2xs text-[var(--color-ink-muted)]"
+                              title={item.created_at}
+                            >
+                              {formatRelative(item.created_at)}
+                            </p>
+                            <p className="font-mono text-2xs tabular-nums text-[var(--color-ink-faint)]">
+                              {formatMs(item.latency_ms)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs text-[var(--color-ink-muted)]">
+                          <span className="text-[var(--color-ink-soft)]">
+                            {ACTIVITY_KIND_LABELS[item.kind] ?? item.kind}
+                          </span>
+                          <span aria-hidden className="text-[var(--color-ink-faint)]">
+                            ·
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-[var(--color-ink-soft)]">
+                              {STATUS_LABEL[item.status] ?? item.status}
+                            </span>
+                          </span>
+                          {item.intent ? <CodeChip>{item.intent}</CodeChip> : null}
+                          {item.skill ? (
+                            <CodeChip>{item.skill.replace(/_skill$/, "")}</CodeChip>
+                          ) : null}
+                          {item.tools.slice(0, 3).map((tool) => (
+                            <CodeChip key={tool}>{tool}</CodeChip>
+                          ))}
+                          {item.tools.length > 3 ? (
+                            <span className="text-[var(--color-ink-faint)]">
+                              +{item.tools.length - 3}
+                            </span>
+                          ) : null}
+                          {item.citation_count > 0 ? (
+                            <span>引用 {item.citation_count}</span>
+                          ) : null}
+                        </div>
+
+                        {item.source_names.length > 0 ? (
+                          <p
+                            className="mt-1 truncate text-2xs text-[var(--color-ink-faint)]"
+                            title={item.source_names.join("、")}
+                          >
+                            来源：{item.source_names.join("、")}
+                          </p>
+                        ) : null}
+
+                        {item.error ? (
+                          <p
+                            className="mt-1 text-2xs text-[var(--color-danger)]"
+                            title={item.error}
+                          >
+                            {item.error}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+
+              {hasMore ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-11"
+                    loading={loadingMore}
+                    onClick={() => void loadMore()}
+                  >
+                    加载更多（还有 {total - items.length} 条）
+                  </Button>
+                  {moreError ? <InlineError message={moreError} /> : null}
+                </div>
+              ) : items.length > ACTIVITY_PAGE_SIZE ? (
+                <p className="text-center text-2xs text-[var(--color-ink-faint)]">
+                  已显示全部 {items.length} 条
+                </p>
+              ) : null}
+            </div>
           )}
         </CardContent>
       </Card>

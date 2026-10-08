@@ -20,7 +20,7 @@ export function Tabs<T extends string>({
     <div
       role="tablist"
       className={cn(
-        "flex items-center gap-1 overflow-x-auto border-b border-[var(--color-line)]",
+        "flex items-center gap-1 overflow-x-auto border-b border-[var(--color-line-faint)]",
         className,
       )}
     >
@@ -34,7 +34,7 @@ export function Tabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "relative whitespace-nowrap font-medium transition-colors duration-150",
+              "relative whitespace-nowrap font-medium transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)]",
               size === "sm" ? "px-2.5 py-2 text-xs" : "px-3 py-2.5 text-[13px]",
               active
                 ? "text-[var(--color-ink)]"

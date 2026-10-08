@@ -1,6 +1,9 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+
+import { useFocusTrap } from "@/components/ui/use-focus-trap";
+import { PRODUCT_TAGLINE, PRODUCT_VERSION } from "@/lib/product-version";
 import {
   Activity,
   ChevronDown,
@@ -137,15 +140,34 @@ function SidebarNav({
     <>
       {/* brand */}
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-[var(--color-line)] px-3.5">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white">
+        {/* Solid fill token, not --color-accent: the glyph is near-white and the
+            accent is lightened in dark mode for text use. */}
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent-solid)] text-white">
           <Database className="size-3.5" strokeWidth={2.4} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold leading-tight text-[var(--color-ink)]">
-            Enterprise RAG Copilot
-          </p>
+          {/* Version sits on the product-name line. `shrink-0` on the link and
+              `truncate` on the name is what keeps the name from being squeezed —
+              the name yields space first, the version never wraps. It is a real
+              link (to the release history), so it carries hover, focus-visible
+              and keyboard affordance. */}
+          <div className="flex min-w-0 items-baseline gap-1.5">
+            <p className="truncate text-[13px] font-semibold leading-tight text-[var(--color-ink)]">
+              Enterprise RAG Copilot
+            </p>
+            {!collapsed ? (
+              <Link
+                href="/about#release-history"
+                title={`查看 ${PRODUCT_VERSION} 版本历程`}
+                aria-label={`产品版本 ${PRODUCT_VERSION}，查看版本历程`}
+                className="shrink-0 rounded-[var(--radius-xs)] px-1 text-2xs font-medium leading-tight text-[var(--color-ink-muted)] transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-accent-ink)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-accent)]"
+              >
+                {PRODUCT_VERSION}
+              </Link>
+            ) : null}
+          </div>
           <p className="truncate text-2xs leading-tight text-[var(--color-ink-faint)]">
-            企业知识智能工作台
+            {PRODUCT_TAGLINE}
           </p>
         </div>
         {onClose ? (
@@ -153,7 +175,7 @@ function SidebarNav({
             type="button"
             onClick={onClose}
             aria-label="关闭导航"
-            className="-mr-1 rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+            className="-mr-1 flex size-8 items-center justify-center rounded-[var(--radius-small)] text-[var(--color-ink-muted)] transition-colors duration-[var(--motion-fast)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
           >
             <X className="size-4" />
           </button>
@@ -175,18 +197,18 @@ function SidebarNav({
                       [group.label]: !isGroupOpen(group),
                     }))
                   }
-                  className="mb-1.5 flex min-h-11 w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-left text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)] transition-colors hover:text-[var(--color-ink-soft)] md:min-h-0 md:py-1"
+                  className="mb-1.5 flex min-h-11 w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-left text-2xs font-semibold tracking-[0.04em] text-[var(--color-ink-muted)] transition-colors duration-[var(--motion-fast)] hover:text-[var(--color-ink-soft)] md:min-h-0 md:py-1"
                 >
                   {group.label}
                   <ChevronDown
                     className={cn(
-                      "size-3 shrink-0 transition-transform duration-200",
+                      "size-3 shrink-0 transition-transform duration-[var(--motion-normal)] ease-[var(--ease-standard)]",
                       isGroupOpen(group) && "rotate-180",
                     )}
                   />
                 </button>
               ) : (
-                <p className="mb-1.5 px-2 text-2xs font-semibold tracking-[0.08em] text-[var(--color-ink-faint)]">
+                <p className="mb-1.5 px-2 text-2xs font-semibold tracking-[0.04em] text-[var(--color-ink-muted)]">
                   {group.label}
                 </p>
               )
@@ -205,17 +227,26 @@ function SidebarNav({
                       onClick={onNavigate}
                       title={item.english ? `${item.label} · ${item.english}` : item.label}
                       className={cn(
-                        "group relative flex items-center gap-2.5 rounded-[var(--radius-md)] px-2 py-1.5 text-[13px] transition-colors duration-150",
+                        "group relative flex items-center gap-2.5 rounded-[var(--radius-small)] px-2 py-1.5 text-[13px]",
+                        "transition-[background-color,color] duration-[var(--motion-fast)] ease-[var(--ease-standard)]",
                         active
                           ? "bg-[var(--color-accent-soft)] font-medium text-[var(--color-accent-ink)]"
-                          : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]",
+                          : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]",
                         collapsed && "justify-center px-0",
                       )}
                     >
                       {active ? (
-                        <span className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-[var(--color-accent)]" />
+                        <span className="absolute inset-y-[5px] left-0 w-[3px] rounded-full bg-[var(--color-accent)]" />
                       ) : null}
-                      <Icon className="size-4 shrink-0" strokeWidth={2} />
+                      <Icon
+                        className={cn(
+                          "size-4 shrink-0 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)]",
+                          active
+                            ? "text-[var(--color-accent)]"
+                            : "text-[var(--color-ink-muted)] group-hover:text-[var(--color-ink-soft)]",
+                        )}
+                        strokeWidth={2}
+                      />
                       {!collapsed ? (
                         // Label on its own line, engineering name beneath it in
                         // a faint second line: inline it would wrap mid-word
@@ -223,7 +254,7 @@ function SidebarNav({
                         <span className="min-w-0 flex-1">
                           <span className="block truncate leading-tight">{item.label}</span>
                           {item.english ? (
-                            <span className="block truncate text-[10px] leading-tight text-[var(--color-ink-faint)]">
+                            <span className="block truncate text-[10px] leading-tight text-[var(--color-ink-muted)]">
                               {item.english}
                             </span>
                           ) : null}
@@ -347,6 +378,8 @@ export function MobileNav({
     };
   }, [open, onClose]);
 
+  const navRef = useFocusTrap<HTMLElement>(open);
+
   return (
     <AnimatePresence>
       {open ? (
@@ -363,6 +396,8 @@ export function MobileNav({
           />
           <motion.aside
             key="nav-panel"
+            ref={navRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-label="主导航"

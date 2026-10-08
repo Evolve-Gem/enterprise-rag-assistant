@@ -1,6 +1,6 @@
 "use client";
 
-import { Compass, FileStack, Layers, Search, Sparkles } from "lucide-react";
+import { Compass, FileStack, Layers, Search, Sparkles, Trophy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Markdown } from "@/components/rag/markdown";
@@ -272,7 +272,7 @@ export default function ExplorerPage() {
                   {detailData.chunks.map((chunk) => (
                     <div
                       key={chunk.chunk_id}
-                      className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2.5"
+                      className="rounded-[var(--radius-md)] border border-[var(--color-line-faint)] surface-subtle px-3 py-2.5"
                     >
                       <div className="flex items-center gap-2">
                         <span className="flex size-5 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-surface-sunken)] font-mono text-[10px] text-[var(--color-ink-muted)]">
@@ -304,61 +304,81 @@ export default function ExplorerPage() {
               )
             ) : (
               <div className="space-y-3">
-                <Field label="检索探测" hint="不调用模型，只看检索结果与分数">
-                  <Input
-                    value={probeQuery}
-                    placeholder="输入查询，例如：Rerank 的作用"
-                    onChange={(event) => setProbeQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") void runProbe();
-                    }}
-                  />
-                </Field>
-                <div className="flex items-end gap-2">
-                  <Field label="模式" className="flex-1">
-                    <Select value={probeMode} onChange={(event) => setProbeMode(event.target.value)}>
-                      <option value="hybrid">hybrid</option>
-                      <option value="keyword">keyword</option>
-                      <option value="vector">vector</option>
-                    </Select>
+                {/* Search Lab: query + parameters sit on one raised bench so the
+                    probe reads as a deliberate experiment, not a stray form. */}
+                <Card surface="raised" className="space-y-3 p-3.5">
+                  <Field label="检索探测" hint="不调用模型，只看检索结果与分数">
+                    <Input
+                      value={probeQuery}
+                      placeholder="输入查询，例如：Rerank 的作用"
+                      onChange={(event) => setProbeQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") void runProbe();
+                      }}
+                    />
                   </Field>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    loading={probeRunning}
-                    disabled={!probeQuery.trim()}
-                    onClick={() => void runProbe()}
-                  >
-                    <Sparkles className="size-3.5" />
-                    探测
-                  </Button>
-                </div>
+                  <div className="flex items-end gap-2">
+                    <Field label="模式" className="flex-1">
+                      <Select
+                        value={probeMode}
+                        onChange={(event) => setProbeMode(event.target.value)}
+                      >
+                        <option value="hybrid">hybrid</option>
+                        <option value="keyword">keyword</option>
+                        <option value="vector">vector</option>
+                      </Select>
+                    </Field>
+                    <Button
+                      variant="primary"
+                      size="md"
+                      loading={probeRunning}
+                      disabled={!probeQuery.trim()}
+                      onClick={() => void runProbe()}
+                    >
+                      <Sparkles className="size-3.5" />
+                      探测
+                    </Button>
+                  </div>
+                </Card>
 
                 {probeError ? (
                   <p className="text-xs text-[var(--color-danger)]">{probeError}</p>
                 ) : null}
 
                 {probeStats ? (
-                  <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] px-3 py-2.5">
+                  <div className="rounded-[var(--radius-md)] border border-[var(--color-line-faint)] surface-inset px-3 py-2.5">
                     <RetrievalFunnel stats={probeStats} />
                   </div>
                 ) : null}
 
                 {probeChunks.length > 0 ? (
                   <>
-                    <p className="text-2xs text-[var(--color-ink-muted)]">
-                      命中 {probeChunks.length} 段，Top-1 重排分{" "}
-                      {formatPercent(probeChunks[0].rerank_score ?? probeChunks[0].fused_score, 1)}
-                    </p>
-                    <div className="space-y-2">
-                      {probeChunks.map((chunk, index) => (
-                        <ProbeResult
-                          key={chunk.chunk_id}
-                          chunk={chunk}
-                          rank={chunk.rank_final ?? index + 1}
-                        />
-                      ))}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-2xs text-[var(--color-ink-muted)]">
+                        命中 {probeChunks.length} 段
+                      </p>
+                      <p className="text-2xs text-[var(--color-ink-faint)]">
+                        Top-1 重排分{" "}
+                        {formatPercent(
+                          probeChunks[0].rerank_score ?? probeChunks[0].fused_score,
+                          1,
+                        )}
+                      </p>
                     </div>
+
+                    <TopResult chunk={probeChunks[0]} />
+
+                    {probeChunks.length > 1 ? (
+                      <div className="space-y-2">
+                        {probeChunks.slice(1).map((chunk, index) => (
+                          <ProbeResult
+                            key={chunk.chunk_id}
+                            chunk={chunk}
+                            rank={chunk.rank_final ?? index + 2}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                   </>
                 ) : probeStats ? (
                   <p className="py-4 text-center text-xs text-[var(--color-ink-faint)]">
@@ -379,40 +399,69 @@ export default function ExplorerPage() {
 }
 
 /**
- * One retrieval hit at default density.
+ * The single best hit.
  *
- * The default view answers "what matched and how well" — title, section, the
- * single score that decided the order, and the snippet. The per-branch scores
- * (BM25 / vector / fusion / rerank) and the raw chunk metadata are real but
- * secondary, so they sit behind the collapsed "查看检索详情" header instead of
- * being spread across every row.
+ * Answers "what matched best and how confident is the pipeline" at a glance:
+ * title, section, the snippet, and the final score in large tabular figures.
+ * The per-branch breakdown stays collapsed underneath, same as every other hit.
  */
+function TopResult({ chunk }: { chunk: RetrievedChunk }) {
+  const finalScore = chunk.rerank_score ?? chunk.fused_score;
+  return (
+    <div className="animate-reveal rounded-[var(--radius-lg)] border border-[var(--color-line-brand)] bg-[var(--color-surface-result)] px-3.5 py-3 shadow-[var(--elevation-1)]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.04em] text-[var(--color-accent-ink)]">
+          <Trophy className="size-3.5" />
+          最佳命中
+        </span>
+        <span className="inline-flex items-baseline gap-1.5">
+          <span className="font-mono text-base font-semibold tabular-nums text-[var(--color-ink)]">
+            {formatPercent(finalScore, 1)}
+          </span>
+          <span className="text-2xs text-[var(--color-ink-muted)]">
+            {chunk.rerank_score !== null ? "重排分" : "融合分"}
+          </span>
+        </span>
+      </div>
+
+      <p
+        className="mt-1.5 truncate text-[13px] font-medium text-[var(--color-ink)]"
+        title={chunk.document_name}
+      >
+        {chunk.document_name}
+      </p>
+      <p className="truncate text-2xs text-[var(--color-ink-muted)]" title={chunk.section}>
+        {chunk.section || "（无章节）"}
+      </p>
+      <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-ink-soft)]">
+        {truncate(chunk.preview || chunk.content, 220)}
+      </p>
+
+      <DetailAccordion chunk={chunk} />
+    </div>
+  );
+}
+
+/** One lower-ranked hit at default density. */
 function ProbeResult({ chunk, rank }: { chunk: RetrievedChunk; rank: number }) {
   const summary = chunk.rerank_score ?? chunk.fused_score;
-  const ranks: [string, number | null][] = [
-    ["关键词", chunk.rank_keyword],
-    ["向量", chunk.rank_vector],
-    ["融合", chunk.rank_fused],
-    ["最终", chunk.rank_final],
-  ];
-
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-3">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--color-line-faint)] surface-subtle px-3.5 py-3">
       <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-surface-sunken)] font-mono text-[11px] font-semibold text-[var(--color-ink-muted)]">
+        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-surface-inset)] font-mono text-[11px] font-semibold text-[var(--color-ink-muted)]">
           {rank}
         </span>
         <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-baseline gap-2">
             <span
-              className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-ink)]"
+              className="min-w-0 flex-1 truncate text-xs font-medium text-[var(--color-ink)]"
               title={chunk.document_name}
             >
               {chunk.document_name}
             </span>
-            <Badge tone="accent">
-              {chunk.rerank_score !== null ? "重排分" : "融合分"} {formatPercent(summary, 1)}
-            </Badge>
+            <span className="shrink-0 font-mono text-2xs tabular-nums text-[var(--color-ink-soft)]">
+              {formatPercent(summary, 1)}
+            </span>
           </div>
 
           <p className="truncate text-2xs text-[var(--color-ink-muted)]" title={chunk.section}>
@@ -420,50 +469,122 @@ function ProbeResult({ chunk, rank }: { chunk: RetrievedChunk; rank: number }) {
           </p>
 
           <p className="text-xs leading-relaxed text-[var(--color-ink-soft)]">
-            {truncate(chunk.preview || chunk.content, 180)}
+            {truncate(chunk.preview || chunk.content, 160)}
           </p>
 
-          <SectionAccordion
-            label="查看检索详情"
-            description="BM25 / 向量 / 融合 / 重排分数与原始知识块信息"
-            className="mt-1"
-          >
-            <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
-              <div>
-                <DefRow label="关键词分（BM25）">{chunk.keyword_score.toFixed(4)}</DefRow>
-                <DefRow label="向量分">{chunk.vector_score.toFixed(4)}</DefRow>
-                <DefRow label="融合分（RRF）">{chunk.fused_score.toFixed(4)}</DefRow>
-                <DefRow label="重排分">
-                  {chunk.rerank_score !== null ? chunk.rerank_score.toFixed(4) : "—"}
-                </DefRow>
-              </div>
-              <div>
-                <DefRow label="命中分支">
-                  {chunk.found_by.length ? chunk.found_by.join(" + ") : "—"}
-                </DefRow>
-                <DefRow label="匹配词">
-                  {chunk.matched_terms.length ? chunk.matched_terms.join("、") : "—"}
-                </DefRow>
-                <DefRow label="知识块 ID" mono>
-                  {chunk.chunk_id}
-                </DefRow>
-                <DefRow label="文档内序号 / 字符数">
-                  {`#${chunk.index} · ${chunk.char_count} 字`}
-                </DefRow>
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="text-2xs text-[var(--color-ink-faint)]">各阶段排名</span>
-              {ranks.map(([label, value]) => (
-                <Badge key={label} tone="neutral">
-                  {label} {value === null ? "—" : `#${value}`}
-                </Badge>
-              ))}
-            </div>
-          </SectionAccordion>
+          <DetailAccordion chunk={chunk} />
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Collapsed technical detail, shared by the top hit and the rest. */
+function DetailAccordion({ chunk }: { chunk: RetrievedChunk }) {
+  return (
+    <SectionAccordion
+      label="查看检索详情"
+      description="BM25 / 向量 / 融合 / 重排分数与原始知识块信息"
+      className="mt-1"
+    >
+      <RetrievalDetail chunk={chunk} />
+    </SectionAccordion>
+  );
+}
+
+/**
+ * Compact score breakdown.
+ *
+ * Each signal is one row — label, a thin meter, the raw value — instead of a
+ * grid of numbers that all look alike. Stages that did not run are omitted
+ * rather than shown as an empty bar, and the rankings stay as badges.
+ */
+function RetrievalDetail({ chunk }: { chunk: RetrievedChunk }) {
+  const ranks: [string, number | null][] = [
+    ["关键词", chunk.rank_keyword],
+    ["向量", chunk.rank_vector],
+    ["融合", chunk.rank_fused],
+    ["最终", chunk.rank_final],
+  ];
+
+  const rows: { label: string; value: number; max: number; tone: string }[] = [
+    {
+      label: "BM25",
+      value: chunk.keyword_score,
+      max: Math.max(chunk.keyword_score, 1),
+      tone: "var(--color-viz-2)",
+    },
+    { label: "向量", value: chunk.vector_score, max: 1, tone: "var(--color-viz-1)" },
+    { label: "RRF", value: chunk.fused_score, max: 1, tone: "var(--color-viz-3)" },
+  ];
+  if (chunk.rerank_score !== null) {
+    rows.push({ label: "重排", value: chunk.rerank_score, max: 1, tone: "var(--color-viz-4)" });
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <ScoreRow key={row.label} {...row} />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+        <div>
+          <DefRow label="命中分支">
+            {chunk.found_by.length ? chunk.found_by.join(" + ") : "—"}
+          </DefRow>
+          <DefRow label="匹配词">
+            {chunk.matched_terms.length ? chunk.matched_terms.join("、") : "—"}
+          </DefRow>
+        </div>
+        <div>
+          <DefRow label="知识块 ID" mono>
+            {chunk.chunk_id}
+          </DefRow>
+          <DefRow label="文档内序号 / 字符数">
+            {`#${chunk.index} · ${chunk.char_count} 字`}
+          </DefRow>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-2xs text-[var(--color-ink-faint)]">各阶段排名</span>
+        {ranks.map(([label, value]) => (
+          <Badge key={label} tone={value === null ? "neutral" : "accent"}>
+            {label} {value === null ? "—" : `#${value}`}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** One signal: label · meter · value. */
+function ScoreRow({
+  label,
+  value,
+  max,
+  tone,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  tone: string;
+}) {
+  const width = Math.min((value / (max || 1)) * 100, 100);
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="w-14 shrink-0 text-2xs text-[var(--color-ink-muted)]">{label}</span>
+      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
+        <span
+          className="block h-full rounded-full"
+          style={{ width: `${width}%`, backgroundColor: tone }}
+        />
+      </span>
+      <span className="w-12 shrink-0 text-right font-mono text-2xs tabular-nums text-[var(--color-ink-soft)]">
+        {value.toFixed(4)}
+      </span>
     </div>
   );
 }

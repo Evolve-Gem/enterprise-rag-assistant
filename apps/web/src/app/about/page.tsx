@@ -7,6 +7,7 @@ import {
   Database,
   FileStack,
   FlaskConical,
+  History,
   Layers,
   Ruler,
   Search,
@@ -24,6 +25,12 @@ import { api } from "@/lib/api";
 import { useAsync } from "@/lib/hooks";
 import type { OverviewResponse } from "@/lib/types";
 import { formatCount } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import {
+  PRODUCT_VERSION,
+  RELEASES,
+  STATUS_LABEL,
+} from "@/lib/product-version";
 
 /** Problem → the capability that answers it. */
 const PROBLEMS = [
@@ -128,7 +135,7 @@ export default function AboutPage() {
           {PROBLEMS.map((item) => (
             <div
               key={item.problem}
-              className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--color-line-faint)] surface-subtle px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <p className="text-sm font-medium text-[var(--color-ink)]">{item.problem}</p>
@@ -149,7 +156,7 @@ export default function AboutPage() {
       </Card>
 
       {/* --------------------------------------------------- C: core chain */}
-      <Card>
+      <Card surface="raised">
         <CardHeader
           title="C. 核心链路"
           description="从资料到可验证结论的完整路径"
@@ -157,21 +164,24 @@ export default function AboutPage() {
           dense
         />
         <CardContent>
-          <ol className="flex flex-col gap-1.5">
+          <ol className="relative space-y-1.5">
             {PIPELINE.map((step, index) => (
-              <li key={step.label} className="flex items-center gap-3">
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-accent-soft)] font-mono text-[10px] font-semibold text-[var(--color-accent-ink)]">
-                  {index + 1}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="font-mono text-xs text-[var(--color-ink)]">{step.label}</span>
-                  <span className="ml-2 text-2xs text-[var(--color-ink-muted)]">{step.cn}</span>
-                </span>
-                {index < PIPELINE.length - 1 ? (
-                  <span aria-hidden className="shrink-0 text-2xs text-[var(--color-ink-faint)]">
-                    ↓
+              <li key={step.label} className="flex items-stretch gap-3">
+                <span className="flex w-6 shrink-0 flex-col items-center">
+                  <span className="flex size-6 items-center justify-center rounded-[var(--radius-xs)] bg-[var(--color-accent-soft)] font-mono text-[10px] font-semibold text-[var(--color-accent-ink)]">
+                    {index + 1}
                   </span>
-                ) : null}
+                  {index < PIPELINE.length - 1 ? (
+                    <span
+                      aria-hidden
+                      className="mt-1 w-px flex-1 bg-[var(--color-line-faint)]"
+                    />
+                  ) : null}
+                </span>
+                <span className="flex min-w-0 flex-1 items-baseline gap-2 pb-1.5 pt-0.5">
+                  <span className="font-mono text-xs text-[var(--color-ink)]">{step.label}</span>
+                  <span className="text-2xs text-[var(--color-ink-muted)]">{step.cn}</span>
+                </span>
               </li>
             ))}
           </ol>
@@ -179,7 +189,10 @@ export default function AboutPage() {
       </Card>
 
       {/* ---------------------------------------------------- D: this demo */}
-      <Card>
+      {/* Recessed like E: both are reference data rather than narrative, and
+          four identical white slabs in a row was the page's whole visual
+          problem — six sections, one material. */}
+      <Card surface="subtle">
         <CardHeader
           title="D. 当前 Demo"
           description="以下数字来自正在运行的实例，由接口实时返回"
@@ -192,6 +205,10 @@ export default function AboutPage() {
           ) : overview.status === "error" ? (
             <ErrorState error={overview.error} onRetry={overview.reload} compact />
           ) : (
+            /* A fragment because this is the last branch of a ternary chain and
+               therefore takes exactly one JSX expression — the grid and the
+               API-version footnote are two. */
+            <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Stat label="企业文档" value={formatCount(overview.data.knowledge.document_count)} icon={<FileStack className="size-4" />} />
               <Stat label="知识块" value={formatCount(overview.data.knowledge.chunk_count)} icon={<Boxes className="size-4" />} />
@@ -207,19 +224,33 @@ export default function AboutPage() {
               />
               <Stat label="业务能力" value={String(overview.data.agent.skill_count)} icon={<Sparkles className="size-4" />} />
               <Stat label="可执行动作" value={String(overview.data.agent.tool_count)} icon={<Workflow className="size-4" />} />
-              <Stat label="版本" value={`v${overview.data.system.version}`} icon={<ShieldCheck className="size-4" />} />
+              <Stat label="产品版本" value={PRODUCT_VERSION} icon={<ShieldCheck className="size-4" />} />
               <Stat
                 label="访问模式"
                 value={overview.data.system.read_only ? "公开只读" : "可写"}
                 icon={<ShieldCheck className="size-4" />}
               />
             </div>
+            {/* The product version and the API version are different things and
+                the tile above used to conflate them (it showed the backend's
+                3.0.0 as the product version). Spelled out here so a visitor is
+                not misled, without touching the backend constant.
+
+                Kept INSIDE this block on purpose: `overview` is a discriminated
+                union, so `overview.data` is only readable inside the guard that
+                narrows it — a sibling `overview.data ? ...` ternary outside the
+                guard does not type-check. */}
+            <p className="mt-3 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+              产品版本 {PRODUCT_VERSION}；API 版本 v{overview.data.system.version}
+              —— 后者是后端接口版本，与产品版本无关，V4.0 起三次发布均未改动后端。
+            </p>
+            </>
           )}
         </CardContent>
       </Card>
 
       {/* ------------------------------------------------------ E: boundary */}
-      <Card>
+      <Card surface="subtle">
         <CardHeader
           title="E. 项目边界"
           description="未实现的能力如实列出，不包装成生产级企业 SaaS"
@@ -265,7 +296,7 @@ export default function AboutPage() {
       </Card>
 
       {/* ------------------------------------------------ technical readers */}
-      <Card>
+      <Card surface="subtle">
         <CardHeader
           title="想继续深入？"
           description="技术面试可以沿着这几条链路查看实现细节"
@@ -278,6 +309,66 @@ export default function AboutPage() {
           <DeepDive href="/insights/evaluation" label="检索指标与人工评分" />
           <DeepDive href="/knowledge/explorer" label="知识块与检索探测" />
           <DeepDive href="/settings" label="运行时配置与系统自检" />
+        </CardContent>
+      </Card>
+
+      {/* ------------------------------------------- G: release history */}
+      <Card id="release-history" className="scroll-mt-20">
+        <CardHeader
+          title="G. 产品迭代历程"
+          description="Release History · 只写有据可查的版本与日期；未发布的版本不标日期"
+          icon={<History className="size-4" />}
+        />
+        <CardContent>
+          <ol className="relative space-y-7 border-l border-[var(--color-line-faint)] pl-6">
+            {RELEASES.map((release) => {
+              const released = release.status === "released";
+              return (
+                <li key={release.version} className="relative">
+                  {/* Node: filled for a shipped version, hollow for one that has
+                      only passed review. Shape carries the state, so it does not
+                      depend on colour alone. */}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute -left-[30px] top-[5px] size-2.5 rounded-full ring-4 ring-[var(--color-surface)]",
+                      released
+                        ? "bg-[var(--color-accent-solid)]"
+                        : "border-2 border-[var(--color-line-strong)] bg-[var(--color-surface)]",
+                    )}
+                  />
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    <span className="font-mono text-[13px] font-semibold tracking-tight text-[var(--color-ink)]">
+                      {release.version}
+                    </span>
+                    <span className="text-[13px] font-medium text-[var(--color-ink)]">
+                      {release.title}
+                    </span>
+                    <Badge tone={released ? "neutral" : "accent"} className="font-normal">
+                      {released ? `已发布 · ${release.releasedAt}` : STATUS_LABEL[release.status]}
+                    </Badge>
+                  </div>
+                  <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                    {release.summary}
+                  </p>
+                  <ul className="mt-2.5 space-y-1.5">
+                    {release.highlights.map((item) => (
+                      <li
+                        key={item}
+                        className="flex gap-2 text-xs leading-relaxed text-[var(--color-ink-muted)]"
+                      >
+                        <span
+                          aria-hidden
+                          className="mt-[7px] size-1 shrink-0 rounded-full bg-[var(--color-ink-faint)]"
+                        />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ol>
         </CardContent>
       </Card>
     </div>
@@ -294,7 +385,8 @@ function Stat({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-canvas)] px-3.5 py-3">
+    // Raises on the recessed card above so the eight tiles stay readable.
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line-faint)] bg-[var(--color-surface)] px-3.5 py-3">
       <div className="flex items-center gap-2 text-[var(--color-ink-faint)]">
         {icon}
         <span className="text-2xs">{label}</span>

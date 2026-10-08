@@ -96,7 +96,7 @@ services:
     # the previous tag would overwrite `rag-copilot-web:4.0.0` and destroy the
     # one-command rollback path. The backend is intentionally NOT bumped — this
     # release changes no backend code, so its image stays 3.0.0 and is reused.
-    image: rag-copilot-web:4.1.0
+    image: rag-copilot-web:4.2.0
     environment:
       PORT: "3001"
       # Runtime proxy target for /api and /health (see next.config.ts). Because

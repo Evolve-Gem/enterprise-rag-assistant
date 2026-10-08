@@ -161,7 +161,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onOpenNav={() => setNavOpen(true)}
           refreshing={health.status === "loading"}
         />
-        <main className="min-w-0 flex-1 px-4 py-4 sm:px-5 sm:py-5 xl:px-7">{children}</main>
+        {/* Keyboard users should not have to tab through the whole sidebar to
+            reach the page. Visually hidden until focused. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded-[var(--radius-small)] focus:border focus:border-[var(--color-line)] focus:bg-[var(--color-surface)] focus:px-3 focus:py-2 focus:text-sm focus:text-[var(--color-ink)] focus:shadow-[var(--elevation-2)]"
+        >
+          跳到主要内容
+        </a>
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 py-4 sm:px-5 sm:py-5 xl:px-7">
+          {children}
+        </main>
       </div>
     </div>
   );

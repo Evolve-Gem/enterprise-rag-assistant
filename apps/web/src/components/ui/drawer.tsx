@@ -2,9 +2,10 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 
 import { cn } from "@/lib/utils";
+import { useFocusTrap } from "./use-focus-trap";
 
 /**
  * Right-hand slide-over panel.
@@ -43,6 +44,9 @@ export function Drawer({
     };
   }, [open, onClose]);
 
+  const panelRef = useFocusTrap<HTMLElement>(open);
+  const titleId = useId();
+
   return (
     <AnimatePresence>
       {open ? (
@@ -52,27 +56,32 @@ export function Drawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
             className="fixed inset-0 z-[100] bg-[var(--color-overlay)] backdrop-blur-[1px]"
             aria-hidden
           />
           <motion.aside
             key="panel"
+            ref={panelRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={titleId}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              "fixed inset-y-0 right-0 z-[101] flex w-full flex-col border-l border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl",
+              "fixed inset-y-0 right-0 z-[101] flex w-full flex-col border-l border-[var(--color-line-faint)] bg-[var(--color-surface-raised)]",
               width === "lg" ? "sm:w-[46rem]" : "sm:w-[34rem]",
             )}
           >
-            <header className="flex items-start justify-between gap-4 border-b border-[var(--color-line)] px-5 py-4">
+            <header className="flex items-start justify-between gap-4 border-b border-[var(--color-line-faint)] bg-[var(--color-surface-raised)] px-5 py-4">
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-[var(--color-ink)]">{title}</div>
+                <div id={titleId} className="text-sm font-semibold text-[var(--color-ink)]">
+                  {title}
+                </div>
                 {subtitle ? (
                   <div className="mt-0.5 text-xs text-[var(--color-ink-muted)]">{subtitle}</div>
                 ) : null}
@@ -81,7 +90,7 @@ export function Drawer({
                 type="button"
                 onClick={onClose}
                 aria-label="关闭面板"
-                className="-mr-1 -mt-1 rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+                className="-mr-1 -mt-1 flex size-8 items-center justify-center rounded-[var(--radius-small)] text-[var(--color-ink-muted)] transition-colors duration-[var(--motion-fast)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
               >
                 <X className="size-4" />
               </button>
@@ -90,7 +99,7 @@ export function Drawer({
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
             {footer ? (
-              <footer className="border-t border-[var(--color-line)] px-5 py-3">{footer}</footer>
+              <footer className="border-t border-[var(--color-line-faint)] px-5 py-3">{footer}</footer>
             ) : null}
           </motion.aside>
         </>

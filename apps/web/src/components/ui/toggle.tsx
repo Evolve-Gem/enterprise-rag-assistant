@@ -28,15 +28,18 @@ export function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)] disabled:cursor-not-allowed disabled:opacity-50",
         checked
-          ? "border-[var(--color-accent)] bg-[var(--color-accent)]"
+          // The knob is near-white, so the track is a UI component that needs
+          // 3:1 against it (WCAG 1.4.11) — the lightened --color-accent gave
+          // only ~2.5:1 in dark mode. Same root cause as the primary button.
+          ? "border-[var(--color-accent-solid)] bg-[var(--color-accent-solid)]"
           : "border-[var(--color-line-strong)] bg-[var(--color-surface-sunken)]",
       )}
     >
       <span
         className={cn(
-          "inline-block size-3.5 rounded-full bg-white shadow-sm transition-transform duration-150",
+          "inline-block size-3.5 rounded-full bg-[var(--color-switch-knob)] shadow-sm transition-transform duration-[var(--motion-normal)] ease-[var(--ease-standard)]",
           checked ? "translate-x-[1.15rem]" : "translate-x-[0.15rem]",
         )}
       />
@@ -82,9 +85,9 @@ export function SegmentedControl<T extends string>({
 }) {
   return (
     <div
-      role="tablist"
+      role="radiogroup"
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-sunken)] p-0.5",
+        "inline-flex items-center gap-0.5 rounded-[var(--radius-small)] border border-[var(--color-line-faint)] bg-[var(--color-surface-inset)] p-0.5",
         className,
       )}
     >
@@ -93,17 +96,17 @@ export function SegmentedControl<T extends string>({
         return (
           <button
             key={option.value}
-            role="tab"
-            aria-selected={active}
+            role="radio"
+            aria-checked={active}
             type="button"
             disabled={disabled}
             title={option.hint}
             onClick={() => onChange(option.value)}
             className={cn(
-              "rounded-[var(--radius-sm)] font-medium transition-colors duration-150 disabled:cursor-not-allowed",
+              "rounded-[var(--radius-xs)] font-medium transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)] disabled:cursor-not-allowed",
               size === "sm" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-[13px]",
               active
-                ? "bg-[var(--color-surface)] text-[var(--color-ink)] shadow-sm"
+                ? "bg-[var(--color-surface)] text-[var(--color-ink)] shadow-[var(--elevation-1)]"
                 : "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]",
             )}
           >

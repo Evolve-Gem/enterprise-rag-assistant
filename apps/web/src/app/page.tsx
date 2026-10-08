@@ -33,6 +33,7 @@ import { useAsync } from "@/lib/hooks";
 import type { OverviewResponse } from "@/lib/types";
 import {
   ACTIVITY_KIND_LABELS,
+  cn,
   formatCount,
   formatMs,
   formatPercent,
@@ -141,30 +142,34 @@ function Hero() {
   return (
     <HeroPanel
       aside={
-        <div className="flex flex-row items-center gap-3 lg:flex-col lg:gap-2">
-          <div className="relative">
-            <div
-              aria-hidden
-              className="absolute inset-0 rounded-full opacity-40 blur-xl"
-              style={{
-                background: "radial-gradient(circle, var(--color-accent) 0%, transparent 70%)",
-              }}
-            />
-            <div className="animate-float relative">
-              <KnowledgeMascot state="idle" size={72} />
-            </div>
+        <>
+          {/* Phone: a single compact status line. Height is load-bearing — this
+              row plus the hero above it is what keeps the third entry card
+              inside a 390x844 first screen. */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <MascotHalo size={38}>
+              <KnowledgeMascot state="idle" size={38} />
+            </MascotHalo>
+            <StatusPill />
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)]/85 px-2.5 py-1 text-2xs text-[var(--color-ink-soft)] backdrop-blur">
-            <StatusDot tone="success" pulse />
-            AI Copilot 已就绪
-          </span>
-        </div>
+
+          {/* Desktop: the mascot as the AI status carrier — floating pose,
+              breathing halo, labelled state. */}
+          <div className="hidden flex-col items-center gap-2.5 lg:flex">
+            <MascotHalo size={72} breathing>
+              <div className="animate-float relative">
+                <KnowledgeMascot state="idle" size={72} />
+              </div>
+            </MascotHalo>
+            <StatusPill />
+          </div>
+        </>
       }
     >
-      <p className="text-2xs font-semibold tracking-[0.14em] text-[var(--color-accent)]">
+      <p className="text-2xs font-semibold tracking-[0.16em] text-[var(--color-accent)]">
         ENTERPRISE RAG COPILOT
       </p>
-      <h1 className="mt-2 text-[26px] font-bold leading-snug tracking-tight text-[var(--color-ink)] sm:text-[30px]">
+      <h1 className="mt-2 text-[26px] font-bold leading-[1.28] tracking-[-0.022em] text-[var(--color-ink)] sm:text-[32px]">
         让企业知识从「文件堆」
         <br className="hidden sm:block" />
         <span className="sm:hidden"> </span>
@@ -192,8 +197,15 @@ function Hero() {
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
         <Badge tone="neutral">Hybrid RAG</Badge>
         <Badge tone="neutral">LangGraph</Badge>
-        <Badge tone="neutral">Citation</Badge>
-        <Badge tone="neutral">Public Read-only Demo</Badge>
+        {/* The phone hero is height-critical and these two are engineering
+            labels, not decisions: "Public Read-only Demo" was also wrapping
+            onto a line of its own below md. */}
+        <Badge tone="neutral" className="max-sm:hidden">
+          Citation
+        </Badge>
+        <Badge tone="neutral" className="max-sm:hidden">
+          Public Read-only Demo
+        </Badge>
       </div>
     </HeroPanel>
   );
@@ -232,7 +244,10 @@ function PrimaryActions() {
         })}
       </section>
 
-      {/* Desktop: the three entry cards. */}
+      {/* Desktop: the three entry cards. These are the page's primary action,
+          so they sit one material level above the supporting sections below
+          (`surface-raised` + elevation-2, the same treatment as a page's main
+          task panel) instead of being a third white slab in a stack of them. */}
       <section className="hidden grid-cols-1 gap-3 md:grid md:grid-cols-3 md:gap-4">
         {PRIMARY_ACTIONS.map((action) => {
         const Icon = action.icon;
@@ -240,7 +255,7 @@ function PrimaryActions() {
           <Link
             key={action.href}
             href={action.href}
-            className="group flex min-h-11 items-center gap-3.5 rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4 transition-colors duration-150 hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)]/40"
+            className="group flex min-h-11 items-center gap-3.5 rounded-[var(--radius-xl)] border border-[var(--color-line-faint)] surface-raised p-4 shadow-[var(--elevation-2)] transition-colors duration-150 hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)]/40"
           >
             <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
               <Icon className="size-5" strokeWidth={2} />
@@ -274,7 +289,10 @@ function PrimaryActions() {
 
 function QuickStart() {
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-4 sm:px-5">
+    // Recessed band, no border: with the entry cards now raised, this section
+    // must recede rather than add a fourth white slab to the stack. The step
+    // cards inside it raise back up, so the nesting reads in both themes.
+    <section className="surface-subtle rounded-[var(--radius-xl)] px-4 py-4 sm:px-5">
       <div className="flex items-start gap-2.5">
         <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
           <Sparkles className="size-3.5" />
@@ -293,7 +311,7 @@ function QuickStart() {
         {QUICK_START.map((item) => (
           <li
             key={item.step}
-            className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-canvas)] p-3 transition-colors duration-150 hover:border-[var(--color-accent-line)]"
+            className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line-faint)] bg-[var(--color-surface)] p-3 transition-colors duration-150 hover:border-[var(--color-accent-line)]"
           >
             <div className="flex items-baseline gap-2">
               <span className="shrink-0 text-2xs font-semibold tracking-[0.08em] text-[var(--color-accent)]">
@@ -350,14 +368,14 @@ function CapabilityStrip() {
 
 function HowItWorks() {
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-4 sm:px-5">
+    <section className="surface-subtle rounded-[var(--radius-xl)] px-4 py-4 sm:px-5">
       <SectionLabel>它是怎么工作的</SectionLabel>
 
       {/* Business layer stays visible: five words carry the whole product story. */}
       <ol className="mt-3 flex flex-col gap-1.5 lg:flex-row lg:items-center">
         {PIPELINE.map((step, index) => (
-          <li key={step} className="flex items-center gap-2 lg:flex-1 lg:flex-col lg:gap-2">
-            <span className="flex w-full items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-canvas)] px-2.5 py-2 text-xs font-medium text-[var(--color-ink)]">
+          <li key={step} className="flex items-center gap-2 lg:flex-1 lg:flex-col lg:gap-1.5">
+            <span className="flex w-full items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-line-faint)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-ink)]">
               {step}
             </span>
             {index < PIPELINE.length - 1 ? (
@@ -735,5 +753,63 @@ function DemoStatusBody({ overview }: { overview: OverviewResponse }) {
         </Card>
       </div>
     </div>
+  );
+}
+
+
+/* ------------------------------------------------------------ hero furniture */
+
+/**
+ * A soft halo behind the mascot.
+ *
+ * Two stacked radials rather than one: a tighter core so the character reads as
+ * emitting light, plus a wider and weaker field so it sits inside an
+ * environment. Both stay under 10% alpha — lit, not radioactive.
+ */
+function MascotHalo({
+  size,
+  children,
+  breathing = false,
+}: {
+  size: number;
+  children: React.ReactNode;
+  breathing?: boolean;
+}) {
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <div
+        aria-hidden
+        className={cn("absolute -inset-3 rounded-full", breathing && "animate-breathe")}
+        style={{
+          background:
+            "radial-gradient(circle, var(--color-brand-glow) 0%, transparent 66%)," +
+            "radial-gradient(circle, var(--color-brand-glow-soft) 0%, transparent 84%)",
+          filter: "blur(10px)",
+        }}
+      />
+      <div className="relative">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * The AI status pill.
+ *
+ * Carries a live-looking indicator — an expanding ring plus a solid core — so
+ * the hero states a fact about the system instead of decorating a corner. Same
+ * height as the V4.1 pill, so nothing below it moves.
+ */
+function StatusPill() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)]/80 px-2.5 py-1 text-2xs text-[var(--color-ink-soft)] backdrop-blur">
+      <span className="relative flex size-1.5 shrink-0 items-center justify-center">
+        <span
+          aria-hidden
+          className="animate-pulse-ring absolute inline-flex size-1.5 rounded-full bg-[var(--color-success)]"
+        />
+        <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-success)]" />
+      </span>
+      AI Copilot 已就绪
+    </span>
   );
 }
