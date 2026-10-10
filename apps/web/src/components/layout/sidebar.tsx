@@ -27,7 +27,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { StatusDot } from "@/components/ui/badge";
 import type { HealthResponse, SettingsResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -102,7 +101,31 @@ function isActiveItem(item: NavItem, pathname: string) {
 }
 
 /**
+ * LED-style status dot for the ink frame.
+ *
+ * The shared `StatusDot` uses the semantic palette, which is tuned for light
+ * content surfaces; on the deep ink frame those greens/browns go muddy. These
+ * are the same meanings with frame-appropriate luminance plus a soft glow, so
+ * the footer reads like an instrument panel instead of a list.
+ */
+function FrameDot({ tone }: { tone: "success" | "warning" }) {
+  const color = tone === "success" ? "#5fdd90" : "#f5bd55";
+  return (
+    <span
+      aria-hidden
+      className="size-1.5 shrink-0 rounded-full"
+      style={{ background: color, boxShadow: `0 0 8px ${color}` }}
+    />
+  );
+}
+
+/**
  * The navigation body, shared by the desktop rail and the mobile drawer.
+ *
+ * V5: the whole chrome is the "ink" material — a deep, constant dark that does
+ * not flip with the theme. The active item carries the aurora signal (a
+ * violet→cyan bar plus a brand wash), which is the one place navigation is
+ * allowed to glow. Everything else is quiet ink typography.
  *
  * `onNavigate` lets the drawer close itself after a tap; on desktop it is
  * omitted because the rail never goes away.
@@ -139,10 +162,14 @@ function SidebarNav({
   return (
     <>
       {/* brand */}
-      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-[var(--color-line)] px-3.5">
-        {/* Solid fill token, not --color-accent: the glyph is near-white and the
-            accent is lightened in dark mode for text use. */}
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent-solid)] text-white">
+      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-[var(--color-frame-line)] px-3.5">
+        {/* The monogram carries the aurora itself: a violet→azure tile. It is
+            the one saturated drop of colour in the chrome, which is what makes
+            the brand block read as a logo instead of a generic app icon. */}
+        <span
+          className="flex size-7 shrink-0 items-center justify-center rounded-[10px] text-white shadow-[0_4px_14px_-4px_rgb(99_102_241/0.9)]"
+          style={{ background: "linear-gradient(135deg, #7c5dfa 0%, #5b54f0 52%, #0ea5be 130%)" }}
+        >
           <Database className="size-3.5" strokeWidth={2.4} />
         </span>
         <div className="min-w-0 flex-1">
@@ -152,7 +179,7 @@ function SidebarNav({
               link (to the release history), so it carries hover, focus-visible
               and keyboard affordance. */}
           <div className="flex min-w-0 items-baseline gap-1.5">
-            <p className="truncate text-[13px] font-semibold leading-tight text-[var(--color-ink)]">
+            <p className="truncate text-[13px] font-semibold leading-tight text-[var(--color-frame-ink)]">
               Enterprise RAG Copilot
             </p>
             {!collapsed ? (
@@ -160,13 +187,13 @@ function SidebarNav({
                 href="/about#release-history"
                 title={`查看 ${PRODUCT_VERSION} 版本历程`}
                 aria-label={`产品版本 ${PRODUCT_VERSION}，查看版本历程`}
-                className="shrink-0 rounded-[var(--radius-xs)] px-1 text-2xs font-medium leading-tight text-[var(--color-ink-muted)] transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-accent-ink)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-accent)]"
+                className="shrink-0 rounded-[var(--radius-xs)] px-1 text-2xs font-medium leading-tight text-[var(--color-frame-ink-muted)] transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)] hover:bg-[var(--color-frame-hover)] hover:text-[var(--color-frame-accent)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-frame-accent)]"
               >
                 {PRODUCT_VERSION}
               </Link>
             ) : null}
           </div>
-          <p className="truncate text-2xs leading-tight text-[var(--color-ink-faint)]">
+          <p className="truncate text-2xs leading-tight text-[var(--color-frame-ink-faint)]">
             {PRODUCT_TAGLINE}
           </p>
         </div>
@@ -175,7 +202,7 @@ function SidebarNav({
             type="button"
             onClick={onClose}
             aria-label="关闭导航"
-            className="-mr-1 flex size-8 items-center justify-center rounded-[var(--radius-small)] text-[var(--color-ink-muted)] transition-colors duration-[var(--motion-fast)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]"
+            className="-mr-1 flex size-8 items-center justify-center rounded-[var(--radius-small)] text-[var(--color-frame-ink-muted)] transition-colors duration-[var(--motion-fast)] hover:bg-[var(--color-frame-hover)] hover:text-[var(--color-frame-ink)]"
           >
             <X className="size-4" />
           </button>
@@ -197,7 +224,7 @@ function SidebarNav({
                       [group.label]: !isGroupOpen(group),
                     }))
                   }
-                  className="mb-1.5 flex min-h-11 w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-left text-2xs font-semibold tracking-[0.04em] text-[var(--color-ink-muted)] transition-colors duration-[var(--motion-fast)] hover:text-[var(--color-ink-soft)] md:min-h-0 md:py-1"
+                  className="mb-1.5 flex min-h-11 w-full items-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-left text-2xs font-semibold tracking-[0.04em] text-[var(--color-frame-ink-faint)] transition-colors duration-[var(--motion-fast)] hover:text-[var(--color-frame-ink-soft)] md:min-h-0 md:py-1"
                 >
                   {group.label}
                   <ChevronDown
@@ -208,12 +235,12 @@ function SidebarNav({
                   />
                 </button>
               ) : (
-                <p className="mb-1.5 px-2 text-2xs font-semibold tracking-[0.04em] text-[var(--color-ink-muted)]">
+                <p className="mb-1.5 px-2 text-2xs font-semibold tracking-[0.04em] text-[var(--color-frame-ink-faint)]">
                   {group.label}
                 </p>
               )
             ) : (
-              <div className="mx-2 mb-2 border-t border-[var(--color-line-faint)]" />
+              <div className="mx-2 mb-2 border-t border-[var(--color-frame-line)]" />
             )}
 
             <ul className={cn("space-y-0.5", !isGroupOpen(group) && "hidden")}>
@@ -230,20 +257,22 @@ function SidebarNav({
                         "group relative flex items-center gap-2.5 rounded-[var(--radius-small)] px-2 py-1.5 text-[13px]",
                         "transition-[background-color,color] duration-[var(--motion-fast)] ease-[var(--ease-standard)]",
                         active
-                          ? "bg-[var(--color-accent-soft)] font-medium text-[var(--color-accent-ink)]"
-                          : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]",
+                          ? "bg-[var(--color-frame-active)] font-medium text-[var(--color-frame-ink)]"
+                          : "text-[var(--color-frame-ink-soft)] hover:bg-[var(--color-frame-hover)] hover:text-[var(--color-frame-ink)]",
                         collapsed && "justify-center px-0",
                       )}
                     >
+                      {/* The aurora bar is the active-state signature: a
+                          violet→cyan gradient, not a flat accent stripe. */}
                       {active ? (
-                        <span className="absolute inset-y-[5px] left-0 w-[3px] rounded-full bg-[var(--color-accent)]" />
+                        <span className="absolute inset-y-[5px] left-0 w-[3px] rounded-full bg-[linear-gradient(180deg,#a78bfa,#22d3ee)]" />
                       ) : null}
                       <Icon
                         className={cn(
                           "size-4 shrink-0 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)]",
                           active
-                            ? "text-[var(--color-accent)]"
-                            : "text-[var(--color-ink-muted)] group-hover:text-[var(--color-ink-soft)]",
+                            ? "text-[var(--color-frame-accent)]"
+                            : "text-[var(--color-frame-ink-faint)] group-hover:text-[var(--color-frame-ink-soft)]",
                         )}
                         strokeWidth={2}
                       />
@@ -254,7 +283,14 @@ function SidebarNav({
                         <span className="min-w-0 flex-1">
                           <span className="block truncate leading-tight">{item.label}</span>
                           {item.english ? (
-                            <span className="block truncate text-[10px] leading-tight text-[var(--color-ink-muted)]">
+                            <span
+                              className={cn(
+                                "block truncate text-[10px] leading-tight",
+                                active
+                                  ? "text-[var(--color-frame-ink-muted)]"
+                                  : "text-[var(--color-frame-ink-faint)]",
+                              )}
+                            >
                               {item.english}
                             </span>
                           ) : null}
@@ -270,26 +306,26 @@ function SidebarNav({
       </nav>
 
       {/* footer: live system status, in user-facing wording */}
-      <div className="shrink-0 border-t border-[var(--color-line)] px-2.5 py-2.5">
+      <div className="shrink-0 border-t border-[var(--color-frame-line)] px-2.5 py-2.5">
         {!collapsed ? (
           <div className="mb-2 space-y-1.5 px-1.5">
             <div className="flex items-center gap-2 text-2xs">
-              <StatusDot tone={health?.index_ready ? "success" : "warning"} />
-              <span className="truncate text-[var(--color-ink-muted)]">
+              <FrameDot tone={health?.index_ready ? "success" : "warning"} />
+              <span className="truncate text-[var(--color-frame-ink-muted)]">
                 知识检索已就绪 · {indexState}
               </span>
             </div>
             <div className="flex items-center gap-2 text-2xs">
-              <StatusDot tone={health?.llm_configured ? "success" : "warning"} />
-              <span className="truncate text-[var(--color-ink-muted)]">
+              <FrameDot tone={health?.llm_configured ? "success" : "warning"} />
+              <span className="truncate text-[var(--color-frame-ink-muted)]">
                 回答生成模型已配置
               </span>
             </div>
-            <p className="pl-4 text-[10px] leading-relaxed text-[var(--color-ink-faint)]">
+            <p className="pl-4 text-[10px] leading-relaxed text-[var(--color-frame-ink-faint)]">
               Hybrid · BM25 + Vector · {settings?.retrieval.rerank_provider ?? "—"} rerank
             </p>
             {settings?.guard_rails.read_only ? (
-              <div className="flex items-center gap-2 pt-0.5 text-2xs text-[var(--color-warning)]">
+              <div className="flex items-center gap-2 pt-0.5 text-2xs text-[var(--color-stage-warning)]">
                 <Lock className="size-3" />
                 <span>公开只读演示</span>
               </div>
@@ -304,7 +340,7 @@ function SidebarNav({
               onClick={onToggle}
               title={collapsed ? "展开侧边栏" : "收起侧边栏"}
               aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
-              className="rounded-[var(--radius-md)] p-1.5 text-[var(--color-ink-faint)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)]"
+              className="rounded-[var(--radius-md)] p-1.5 text-[var(--color-frame-ink-faint)] transition-colors hover:bg-[var(--color-frame-hover)] hover:text-[var(--color-frame-ink)]"
             >
               {collapsed ? (
                 <PanelLeftOpen className="size-4" />
@@ -316,6 +352,27 @@ function SidebarNav({
         ) : null}
       </div>
     </>
+  );
+}
+
+/**
+ * A whisper of aurora at the top of the chrome.
+ *
+ * Painted as its own layer behind the nav content so it can spill across the
+ * brand block without tinting the nav items themselves. Kept under 20% alpha —
+ * the frame should feel lit from within, not decorated.
+ */
+function FrameAmbience() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 top-0 h-44"
+      style={{
+        background:
+          "radial-gradient(90% 100% at 16% 0%, rgb(124 93 250 / 0.16) 0%, transparent 68%)," +
+          "radial-gradient(70% 90% at 88% 4%, rgb(14 165 190 / 0.10) 0%, transparent 70%)",
+      }}
+    />
   );
 }
 
@@ -335,14 +392,17 @@ export function Sidebar({
     <motion.aside
       animate={{ width: collapsed ? 68 : 252 }}
       transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-      className="sticky top-0 z-40 hidden h-dvh shrink-0 flex-col border-r border-[var(--color-line)] bg-[var(--color-surface)] md:flex"
+      className="ink-frame sticky top-0 z-40 hidden h-dvh shrink-0 flex-col overflow-hidden border-r border-[var(--color-frame-line)] md:flex"
     >
-      <SidebarNav
-        collapsed={collapsed}
-        onToggle={onToggle}
-        settings={settings}
-        health={health}
-      />
+      <FrameAmbience />
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <SidebarNav
+          collapsed={collapsed}
+          onToggle={onToggle}
+          settings={settings}
+          health={health}
+        />
+      </div>
     </motion.aside>
   );
 }
@@ -352,6 +412,8 @@ export function Sidebar({
  *
  * The rail is 252px wide; squeezing it next to content on a 390px viewport is
  * what produces horizontal overflow, so below `md` it becomes a drawer instead.
+ * V5: the drawer is the same ink material as the rail, so the navigation
+ * identity is identical on every device.
  */
 export function MobileNav({
   open,
@@ -364,6 +426,9 @@ export function MobileNav({
   settings?: SettingsResponse;
   health?: HealthResponse;
 }) {
+  // Escape-to-close plus scroll lock. Kept inline (not the shared Drawer)
+  // because this piece owns its own framer-motion transition.
+  // The focus trap owns focus; these two are separate concerns.
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -405,15 +470,18 @@ export function MobileNav({
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-y-0 left-0 z-[111] flex h-dvh w-[86vw] max-w-[22rem] flex-col border-r border-[var(--color-line)] bg-[var(--color-surface)] shadow-2xl md:hidden"
+            className="ink-frame fixed inset-y-0 left-0 z-[111] flex h-dvh w-[86vw] max-w-[22rem] flex-col overflow-hidden border-r border-[var(--color-frame-line)] shadow-2xl md:hidden"
           >
-            <SidebarNav
-              collapsed={false}
-              onNavigate={onClose}
-              onClose={onClose}
-              settings={settings}
-              health={health}
-            />
+            <FrameAmbience />
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <SidebarNav
+                collapsed={false}
+                onNavigate={onClose}
+                onClose={onClose}
+                settings={settings}
+                health={health}
+              />
+            </div>
           </motion.aside>
         </>
       ) : null}

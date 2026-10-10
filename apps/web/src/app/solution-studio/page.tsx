@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { DefRow, SectionLabel } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { PageIntro, StepNote } from "@/components/ui/page-intro";
+import { StageStrip } from "@/components/ui/stage-strip";
 import {
   MainTaskBody,
   MainTaskHeader,
@@ -237,6 +238,7 @@ export default function SolutionStudioPage() {
   return (
     <div className="space-y-5">
       <PageIntro
+        kicker="Solution studio"
         title="方案生成"
         subtitle="输入客户需求，AI 会理解需求、检索相关企业知识，并生成带来源依据的结构化售前方案。"
       />
@@ -244,6 +246,11 @@ export default function SolutionStudioPage() {
       {!hasOutput ? (
         /* ------------------------------------------------- IDLE: full width */
         <>
+          <StageStrip
+            steps={["描述需求", "需求分析", "知识检索", "逐章节生成", "导出交付"]}
+            aside={<>结构化 8 章节 · 可导出 Markdown / Word</>}
+          />
+
           <MainTaskPanel>
             <MainTaskHeader
               title="客户需求"

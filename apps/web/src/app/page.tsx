@@ -23,7 +23,7 @@ import Link from "next/link";
 import { KnowledgeMascot } from "@/components/mascot/knowledge-mascot";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, SectionLabel } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, Kicker } from "@/components/ui/card";
 import { BarChart, CompactMetric, Donut, StackedBar } from "@/components/ui/data";
 import { HeroPanel } from "@/components/ui/hero-panel";
 import { SectionAccordion } from "@/components/ui/section";
@@ -78,24 +78,29 @@ const PRIMARY_ACTIONS = [
   },
 ];
 
-/** One rail on desktop, a compact vertical flow on a phone. */
+/**
+ * Three real examples, used as a "try it" list.
+ *
+ * V5 reshaped this from a second row of three cards into a single divided
+ * list: the page already opens with a three-column action rail, and two
+ * identical card rows in a row is exactly the "template" reading this release
+ * removes. A list of prompts reads as something *different* — a set of things
+ * to say, not a set of places to go.
+ */
 const QUICK_START = [
   {
-    step: "Step 1",
     title: "问一个知识问题",
     example: ASK_EXAMPLE,
     cta: "体验知识问答",
     href: `/ask?q=${encodeURIComponent(ASK_EXAMPLE)}`,
   },
   {
-    step: "Step 2",
     title: "让 Agent 完成一个任务",
     example: AGENT_EXAMPLE,
     cta: "体验 AI Agent",
     href: `/agent?task=${encodeURIComponent(AGENT_EXAMPLE)}`,
   },
   {
-    step: "Step 3",
     title: "生成一份售前方案",
     example: SOLUTION_EXAMPLE,
     cta: "体验方案生成",
@@ -103,7 +108,7 @@ const QUICK_START = [
   },
 ];
 
-/** Deliberately terse — the entry cards above already say what you can do. */
+/** Deliberately terse — the entry rail above already says what you can do. */
 const CAPABILITIES = [
   { icon: ShieldCheck, title: "可溯源问答", description: "关键结论带可点击来源" },
   { icon: Workflow, title: "任务执行", description: "Agent 自动选择能力与工具" },
@@ -129,7 +134,7 @@ export default function HomePage() {
     <div className="space-y-5">
       <Hero />
       <PrimaryActions />
-      <QuickStart />
+      <TryExamples />
       <HowItWorks />
       <DemoStatus />
     </div>
@@ -166,16 +171,14 @@ function Hero() {
         </>
       }
     >
-      <p className="text-2xs font-semibold tracking-[0.16em] text-[var(--color-accent)]">
-        ENTERPRISE RAG COPILOT
-      </p>
-      <h1 className="mt-2 text-[26px] font-bold leading-[1.28] tracking-[-0.022em] text-[var(--color-ink)] sm:text-[32px]">
+      <p className="kicker kicker-stage">Enterprise RAG Copilot</p>
+      <h1 className="mt-2.5 text-[27px] font-bold leading-[1.24] tracking-[-0.024em] text-[var(--color-stage-ink)] sm:text-[36px] lg:text-[40px]">
         让企业知识从「文件堆」
         <br className="hidden sm:block" />
         <span className="sm:hidden"> </span>
         变成可问、可查、可执行的 AI 工作台
       </h1>
-      <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--color-ink-muted)]">
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--color-stage-ink-soft)]">
         基于企业知识库，实现可溯源知识问答、AI Agent 任务执行与售前方案生成。
       </p>
 
@@ -187,7 +190,7 @@ function Hero() {
           </Button>
         </Link>
         <Link href="/agent" className="sm:w-auto">
-          <Button variant="outline" size="lg" className="w-full sm:w-auto">
+          <Button variant="stage" size="lg" className="w-full sm:w-auto">
             <Workflow className="size-4" />
             体验 AI Agent
           </Button>
@@ -195,15 +198,15 @@ function Hero() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
-        <Badge tone="neutral">Hybrid RAG</Badge>
-        <Badge tone="neutral">LangGraph</Badge>
+        <Badge tone="ink">Hybrid RAG</Badge>
+        <Badge tone="ink">LangGraph</Badge>
         {/* The phone hero is height-critical and these two are engineering
             labels, not decisions: "Public Read-only Demo" was also wrapping
             onto a line of its own below md. */}
-        <Badge tone="neutral" className="max-sm:hidden">
+        <Badge tone="ink" className="max-sm:hidden">
           Citation
         </Badge>
-        <Badge tone="neutral" className="max-sm:hidden">
+        <Badge tone="ink" className="max-sm:hidden">
           Public Read-only Demo
         </Badge>
       </div>
@@ -244,91 +247,96 @@ function PrimaryActions() {
         })}
       </section>
 
-      {/* Desktop: the three entry cards. These are the page's primary action,
-          so they sit one material level above the supporting sections below
-          (`surface-raised` + elevation-2, the same treatment as a page's main
-          task panel) instead of being a third white slab in a stack of them. */}
-      <section className="hidden grid-cols-1 gap-3 md:grid md:grid-cols-3 md:gap-4">
-        {PRIMARY_ACTIONS.map((action) => {
-        const Icon = action.icon;
-        return (
-          <Link
-            key={action.href}
-            href={action.href}
-            className="group flex min-h-11 items-center gap-3.5 rounded-[var(--radius-xl)] border border-[var(--color-line-faint)] surface-raised p-4 shadow-[var(--elevation-2)] transition-colors duration-150 hover:border-[var(--color-accent-line)] hover:bg-[var(--color-accent-soft)]/40"
-          >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-              <Icon className="size-5" strokeWidth={2} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex flex-wrap items-baseline gap-1.5">
-                <span className="text-[15px] font-semibold text-[var(--color-ink)]">
-                  {action.title}
+      {/* Desktop: ONE connected rail instead of three floating cards.
+          A three-column panel with interior hairlines reads as a designed
+          component; three identical boxes read as a template. The rail sits a
+          material level above the supporting bands below it, so it is
+          unmistakably the page's primary action. */}
+      <section className="hidden overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface)] shadow-[var(--elevation-2)] md:block">
+        <div className="flex items-center justify-between gap-4 border-b border-[var(--color-line-faint)] px-5 py-3">
+          <Kicker rule className="flex-1">
+            从这里开始 · Start here
+          </Kicker>
+          <p className="shrink-0 text-2xs text-[var(--color-ink-faint)]">三个入口，任选其一</p>
+        </div>
+        <div className="grid grid-cols-3 divide-x divide-[var(--color-line-faint)]">
+          {PRIMARY_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            return (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="group relative flex flex-col gap-3 p-5 transition-colors duration-150 hover:bg-[var(--color-accent-soft)]/35"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+                  <Icon className="size-5" strokeWidth={2} />
                 </span>
-                <span className="hidden text-2xs text-[var(--color-ink-faint)] sm:inline">
-                  {action.english}
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-baseline gap-1.5">
+                    <span className="text-[15px] font-semibold text-[var(--color-ink)]">
+                      {action.title}
+                    </span>
+                    <span className="text-2xs text-[var(--color-ink-faint)]">{action.english}</span>
+                  </span>
+                  <span className="mt-1.5 block text-xs leading-relaxed text-[var(--color-ink-muted)]">
+                    {action.description}
+                  </span>
                 </span>
-              </span>
-              <span className="mt-1 block text-xs leading-relaxed text-[var(--color-ink-muted)]">
-                {action.description}
-              </span>
-              <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-accent)]">
-                {action.cta}
-                <ArrowRight className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
-              </span>
-            </span>
-          </Link>
-          );
-        })}
+                <span className="mt-auto inline-flex items-center gap-1.5 pt-1 text-xs font-medium text-[var(--color-accent)]">
+                  {action.cta}
+                  <ArrowRight className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            );
+          })}
+        </div>
       </section>
     </>
   );
 }
 
-/* --------------------------------------------------------------- quickstart */
+/* --------------------------------------------------------------- try-it list */
 
-function QuickStart() {
+function TryExamples() {
   return (
-    // Recessed band, no border: with the entry cards now raised, this section
-    // must recede rather than add a fourth white slab to the stack. The step
-    // cards inside it raise back up, so the nesting reads in both themes.
-    <section className="surface-subtle rounded-[var(--radius-xl)] px-4 py-4 sm:px-5">
-      <div className="flex items-start gap-2.5">
+    <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line-faint)] bg-[var(--color-surface)]">
+      <div className="flex items-start gap-2.5 border-b border-[var(--color-line-faint)] px-4 py-3 sm:px-5">
         <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
           <Sparkles className="size-3.5" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold text-[var(--color-ink)]">
-            第一次来？3 分钟体验
+          <h2 className="text-[14px] font-semibold text-[var(--color-ink)]">
+            第一次来？用一条真实示例感受一下
           </h2>
-          <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-ink-muted)]">
-            不需要了解 RAG 或 Agent，任选一步开始。只填入示例，不会自动提问。
+          <p className="mt-0.5 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
+            不需要了解 RAG 或 Agent，任选一条开始。只填入示例，不会自动提问。
           </p>
         </div>
       </div>
 
-      <ol className="mt-3.5 grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-3">
-        {QUICK_START.map((item) => (
-          <li
-            key={item.step}
-            className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line-faint)] bg-[var(--color-surface)] p-3 transition-colors duration-150 hover:border-[var(--color-accent-line)]"
-          >
-            <div className="flex items-baseline gap-2">
-              <span className="shrink-0 text-2xs font-semibold tracking-[0.08em] text-[var(--color-accent)]">
-                {item.step}
+      <ol className="divide-y divide-[var(--color-line-faint)]">
+        {QUICK_START.map((item, index) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              className="group flex min-h-[64px] items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-[var(--color-surface-subtle)] sm:px-5"
+            >
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--color-accent-line)] bg-[var(--color-accent-soft)] font-mono text-[10px] font-semibold text-[var(--color-accent-ink)]">
+                {index + 1}
               </span>
-              <span className="min-w-0 truncate text-[13px] font-medium text-[var(--color-ink)]">
-                {item.title}
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-medium text-[var(--color-ink)]">
+                  {item.title}
+                </span>
+                <span className="mt-0.5 block truncate text-2xs text-[var(--color-ink-muted)]">
+                  {item.example}
+                </span>
               </span>
-            </div>
-            <p className="mt-1.5 line-clamp-2 text-2xs leading-relaxed text-[var(--color-ink-muted)]">
-              {item.example}
-            </p>
-            <Link href={item.href} className="mt-2.5 block">
-              <Button variant="outline" size="sm" className="w-full">
+              <span className="hidden shrink-0 items-center gap-1.5 text-xs font-medium text-[var(--color-accent)] sm:inline-flex">
                 {item.cta}
-                <ArrowRight className="size-3.5" />
-              </Button>
+                <ArrowRight className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
+              </span>
+              <ArrowRight className="size-4 shrink-0 text-[var(--color-ink-faint)] sm:hidden" />
             </Link>
           </li>
         ))}
@@ -348,7 +356,7 @@ function QuickStart() {
  */
 function CapabilityStrip() {
   return (
-    <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-[var(--color-line-faint)] pt-3 lg:grid-cols-4">
+    <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-[var(--color-line-faint)] pt-3.5 lg:grid-cols-4">
       {CAPABILITIES.map((capability) => {
         const Icon = capability.icon;
         return (
@@ -368,21 +376,38 @@ function CapabilityStrip() {
 
 function HowItWorks() {
   return (
-    <section className="surface-subtle rounded-[var(--radius-xl)] px-4 py-4 sm:px-5">
-      <SectionLabel>它是怎么工作的</SectionLabel>
+    <section className="rounded-[var(--radius-xl)] border border-[var(--color-line-faint)] bg-[var(--color-surface-subtle)] px-4 py-4 sm:px-5">
+      <Kicker rule>How it works</Kicker>
+      <h2 className="mt-2 text-[16px] font-semibold tracking-[-0.012em] text-[var(--color-ink)]">
+        五步，把企业资料变成可验证的回答
+      </h2>
 
-      {/* Business layer stays visible: five words carry the whole product story. */}
-      <ol className="mt-3 flex flex-col gap-1.5 lg:flex-row lg:items-center">
+      {/* Desktop: a real pipeline — numbered nodes on a connecting rail. It
+          communicates "process" better than five boxes ever did, and it gives
+          the page a second visual landmark under the hero. */}
+      <ol className="relative mt-5 hidden grid-cols-5 gap-2 lg:grid">
+        <span
+          aria-hidden
+          className="absolute left-[10%] right-[10%] top-[13px] h-px bg-[var(--color-line-strong)]/70"
+        />
         {PIPELINE.map((step, index) => (
-          <li key={step} className="flex items-center gap-2 lg:flex-1 lg:flex-col lg:gap-1.5">
-            <span className="flex w-full items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-line-faint)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-ink)]">
-              {step}
+          <li key={step} className="relative flex flex-col items-center gap-2 text-center">
+            <span className="relative z-10 flex size-7 items-center justify-center rounded-full border border-[var(--color-accent-line)] bg-[var(--color-surface)] font-mono text-[11px] font-semibold text-[var(--color-accent)]">
+              {String(index + 1).padStart(2, "0")}
             </span>
-            {index < PIPELINE.length - 1 ? (
-              <span aria-hidden className="shrink-0 text-[var(--color-ink-faint)] lg:rotate-90">
-                →
-              </span>
-            ) : null}
+            <span className="text-xs font-medium text-[var(--color-ink)]">{step}</span>
+          </li>
+        ))}
+      </ol>
+
+      {/* Phone: the same five steps as a compact numbered list. */}
+      <ol className="mt-3.5 space-y-1.5 lg:hidden">
+        {PIPELINE.map((step, index) => (
+          <li key={step} className="flex items-center gap-2.5">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-soft)] font-mono text-[10px] font-semibold text-[var(--color-accent-ink)]">
+              {index + 1}
+            </span>
+            <span className="text-xs font-medium text-[var(--color-ink)]">{step}</span>
           </li>
         ))}
       </ol>
@@ -436,6 +461,27 @@ function DemoStatus() {
   );
 }
 
+/**
+ * The instrument board.
+ *
+ * V5: twelve bordered metric boxes became ONE hairline grid. The `gap-px` +
+ * shared-background trick draws true dividers no matter how the grid wraps,
+ * and the numerals were promoted to the display style — this is the product's
+ * data face, and a wall of identical small boxes was the least "designed"
+ * surface on the page.
+ */
+function MetricBoard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-[var(--radius-large)] border border-[var(--color-line-faint)] bg-[var(--color-line-faint)]">
+      <div className="grid grid-cols-2 gap-px sm:grid-cols-3 xl:grid-cols-6">{children}</div>
+    </div>
+  );
+}
+
+function MetricCell({ children }: { children: React.ReactNode }) {
+  return <div className="bg-[var(--color-surface)] px-4 py-3">{children}</div>;
+}
+
 function DemoStatusBody({ overview }: { overview: OverviewResponse }) {
   const { knowledge, agent, rag, system } = overview;
 
@@ -451,77 +497,125 @@ function DemoStatusBody({ overview }: { overview: OverviewResponse }) {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
-        <CompactMetric
-          label="企业文档"
-          value={formatCount(knowledge.document_count)}
-          icon={<FileStack className="size-3.5" />}
-          tone="accent"
-        />
-        <CompactMetric
-          label="知识块"
-          value={formatCount(knowledge.chunk_count)}
-          icon={<Boxes className="size-3.5" />}
-        />
-        <CompactMetric
-          label="知识检索"
-          value={system.retriever_mode === "hybrid" ? "混合检索" : system.retriever_mode}
-          icon={<Search className="size-3.5" />}
-          tone="success"
-        />
-        <CompactMetric
-          label="Agent 运行"
-          value={formatCount(agent.run_count)}
-          hint={`成功率 ${formatPercent(agent.success_rate)}`}
-          icon={<Workflow className="size-3.5" />}
-        />
-        <CompactMetric
-          label="问答次数"
-          value={formatCount(rag.question_count)}
-          hint={`引用 ${formatCount(rag.citation_count)} 处`}
-          icon={<MessageSquareText className="size-3.5" />}
-        />
-        <CompactMetric
-          label="带来源回答"
-          value={formatPercent(rag.grounded_rate)}
-          icon={<ShieldCheck className="size-3.5" />}
-          tone={rag.grounded_rate >= 0.8 ? "success" : "warning"}
-        />
-        <CompactMetric
-          label="平均响应"
-          value={formatMs(rag.average_latency_ms)}
-          hint={`平均引用 ${rag.average_citations} 条`}
-          icon={<Gauge className="size-3.5" />}
-        />
-        <CompactMetric
-          label="业务能力"
-          value={agent.skill_count}
-          hint={`${agent.tool_count} 个可执行动作`}
-          icon={<Sparkles className="size-3.5" />}
-        />
-        <CompactMetric
-          label="执行引擎"
-          value={agent.engine === "langgraph" ? "LangGraph" : agent.engine}
-          icon={<Activity className="size-3.5" />}
-        />
-        <CompactMetric
-          label="最近索引"
-          value={formatRelative(knowledge.last_indexed_at)}
-          hint={system.embedding_provider === "hashing" ? "离线哈希向量" : system.embedding_provider}
-          icon={<Clock className="size-3.5" />}
-        />
-        <CompactMetric
-          label="检索模式"
-          value={system.retriever_mode}
-          hint={`${system.llm_provider} · ${system.llm_model}`}
-          icon={<Database className="size-3.5" />}
-        />
-        <CompactMetric
-          label="累计 Tool 调用"
-          value={formatCount(agent.tool_call_count)}
-          icon={<Cpu className="size-3.5" />}
-        />
-      </div>
+      <MetricBoard>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="企业文档"
+            value={formatCount(knowledge.document_count)}
+            icon={<FileStack className="size-3.5" />}
+            tone="accent"
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="知识块"
+            value={formatCount(knowledge.chunk_count)}
+            icon={<Boxes className="size-3.5" />}
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="知识检索"
+            value={system.retriever_mode === "hybrid" ? "混合检索" : system.retriever_mode}
+            icon={<Search className="size-3.5" />}
+            tone="success"
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="Agent 运行"
+            value={formatCount(agent.run_count)}
+            hint={`成功率 ${formatPercent(agent.success_rate)}`}
+            icon={<Workflow className="size-3.5" />}
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="问答次数"
+            value={formatCount(rag.question_count)}
+            hint={`引用 ${formatCount(rag.citation_count)} 处`}
+            icon={<MessageSquareText className="size-3.5" />}
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="带来源回答"
+            value={formatPercent(rag.grounded_rate)}
+            icon={<ShieldCheck className="size-3.5" />}
+            tone={rag.grounded_rate >= 0.8 ? "success" : "warning"}
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="平均响应"
+            value={formatMs(rag.average_latency_ms)}
+            hint={`平均引用 ${rag.average_citations} 条`}
+            icon={<Gauge className="size-3.5" />}
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="业务能力"
+            value={agent.skill_count}
+            hint={`${agent.tool_count} 个可执行动作`}
+            icon={<Sparkles className="size-3.5" />}
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="执行引擎"
+            value={agent.engine === "langgraph" ? "LangGraph" : agent.engine}
+            icon={<Activity className="size-3.5" />}
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="最近索引"
+            value={formatRelative(knowledge.last_indexed_at)}
+            hint={system.embedding_provider === "hashing" ? "离线哈希向量" : system.embedding_provider}
+            icon={<Clock className="size-3.5" />}
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="检索模式"
+            value={system.retriever_mode}
+            hint={`${system.llm_provider} · ${system.llm_model}`}
+            icon={<Database className="size-3.5" />}
+          />
+        </MetricCell>
+        <MetricCell>
+          <CompactMetric
+            plain
+            size="lg"
+            label="累计 Tool 调用"
+            value={formatCount(agent.tool_call_count)}
+            icon={<Cpu className="size-3.5" />}
+          />
+        </MetricCell>
+      </MetricBoard>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card>
@@ -756,7 +850,6 @@ function DemoStatusBody({ overview }: { overview: OverviewResponse }) {
   );
 }
 
-
 /* ------------------------------------------------------------ hero furniture */
 
 /**
@@ -764,7 +857,8 @@ function DemoStatusBody({ overview }: { overview: OverviewResponse }) {
  *
  * Two stacked radials rather than one: a tighter core so the character reads as
  * emitting light, plus a wider and weaker field so it sits inside an
- * environment. Both stay under 10% alpha — lit, not radioactive.
+ * environment. Both stay under 20% alpha — lit, not radioactive. On the stage
+ * this is the one warm point of the composition.
  */
 function MascotHalo({
   size,
@@ -782,8 +876,8 @@ function MascotHalo({
         className={cn("absolute -inset-3 rounded-full", breathing && "animate-breathe")}
         style={{
           background:
-            "radial-gradient(circle, var(--color-brand-glow) 0%, transparent 66%)," +
-            "radial-gradient(circle, var(--color-brand-glow-soft) 0%, transparent 84%)",
+            "radial-gradient(circle, var(--aurora-violet) 0%, transparent 66%)," +
+            "radial-gradient(circle, var(--aurora-indigo) 0%, transparent 84%)",
           filter: "blur(10px)",
         }}
       />
@@ -801,13 +895,14 @@ function MascotHalo({
  */
 function StatusPill() {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-surface)]/80 px-2.5 py-1 text-2xs text-[var(--color-ink-soft)] backdrop-blur">
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--color-stage-line-strong)] bg-[rgb(255_255_255/0.06)] px-2.5 py-1 text-2xs text-[var(--color-stage-ink-soft)] backdrop-blur">
       <span className="relative flex size-1.5 shrink-0 items-center justify-center">
         <span
           aria-hidden
-          className="animate-pulse-ring absolute inline-flex size-1.5 rounded-full bg-[var(--color-success)]"
+          className="animate-pulse-ring absolute inline-flex size-1.5 rounded-full"
+          style={{ background: "#5fdd90" }}
         />
-        <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-success)]" />
+        <span className="relative inline-flex size-1.5 rounded-full" style={{ background: "#5fdd90" }} />
       </span>
       AI Copilot 已就绪
     </span>

@@ -39,6 +39,14 @@ function lookup(pathname: string) {
   return match ? TITLES[match] : { title: "Enterprise RAG Copilot", subtitle: "" };
 }
 
+/**
+ * Top of the chrome.
+ *
+ * V5: the bar is part of the ink frame, not a floating white strip. The page
+ * title now sits on dark in both themes, which is what makes the whole shell
+ * read as one designed object; a single aurora hairline runs under the bar as
+ * the brand signature.
+ */
 export function Topbar({
   health,
   readOnly = false,
@@ -59,23 +67,25 @@ export function Topbar({
   const meta = lookup(pathname);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface)]/85 px-3 backdrop-blur-md sm:px-5">
+    <header className="ink-frame relative sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-[var(--color-frame-line)] px-3 sm:px-5">
       <div className="flex min-w-0 items-center gap-1.5">
         {onOpenNav ? (
           <button
             type="button"
             onClick={onOpenNav}
             aria-label="打开导航"
-            className="-ml-1 rounded-[var(--radius-md)] p-2 text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-ink)] md:hidden"
+            className="-ml-1 rounded-[var(--radius-md)] p-2 text-[var(--color-frame-ink-soft)] transition-colors hover:bg-[var(--color-frame-hover)] hover:text-[var(--color-frame-ink)] md:hidden"
           >
             <Menu className="size-5" />
           </button>
         ) : null}
 
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold text-[var(--color-ink)]">{meta.title}</h1>
+          <h1 className="truncate text-sm font-semibold text-[var(--color-frame-ink)]">
+            {meta.title}
+          </h1>
           {meta.subtitle ? (
-            <p className="truncate text-2xs text-[var(--color-ink-muted)]">{meta.subtitle}</p>
+            <p className="truncate text-2xs text-[var(--color-frame-ink-muted)]">{meta.subtitle}</p>
           ) : null}
         </div>
       </div>
@@ -86,7 +96,7 @@ export function Topbar({
             drawer and the home hero carry the same information. */}
         {health ? (
           <Badge
-            tone={health.status === "ok" ? "success" : "warning"}
+            tone={health.status === "ok" ? "ink-success" : "ink-warning"}
             className="max-md:hidden"
           >
             {health.status === "ok" ? "服务正常" : "降级运行"}
@@ -94,7 +104,7 @@ export function Topbar({
         ) : null}
 
         {readOnly ? (
-          <Badge tone="accent" className="max-sm:hidden">
+          <Badge tone="ink-accent" className="max-sm:hidden">
             公开只读演示
           </Badge>
         ) : null}
@@ -104,7 +114,7 @@ export function Topbar({
         {onRefresh ? (
           <Button
             size="icon"
-            variant="ghost"
+            variant="frame"
             className="max-sm:hidden"
             onClick={() => {
               onRefresh();
@@ -119,7 +129,7 @@ export function Topbar({
 
         <Button
           size="icon"
-          variant="ghost"
+          variant="frame"
           onClick={toggle}
           title={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
           aria-label="切换主题"
@@ -127,6 +137,18 @@ export function Topbar({
           {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
       </div>
+
+      {/* The aurora hairline: a 1px signature that ties the chrome to the
+          stage surfaces. Fades at both ends so it reads as light, not a
+          divider. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-[-1px] h-px opacity-70"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgb(124 93 250 / 0.55) 16%, rgb(34 211 238 / 0.35) 58%, transparent 100%)",
+        }}
+      />
     </header>
   );
 }

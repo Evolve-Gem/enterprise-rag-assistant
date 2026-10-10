@@ -100,9 +100,44 @@ export default function AboutPage() {
   return (
     <div className="space-y-6">
       <PageIntro
+        kicker="About"
         title="关于项目"
         subtitle="这不是一个功能列表，而是一个关于「企业知识为什么难用、以及可以怎么改」的判断，以及围绕这个判断做出的完整实现。"
       />
+
+      {/* V5 masthead — the About page's stage moment. The product introduces
+          itself on ink: mark, one-line positioning, and the honest stack
+          chips. Section A below keeps the narrative. */}
+      <section className="stage-panel grain relative px-5 py-6 sm:px-7">
+        <div aria-hidden className="aurora-field animate-aurora opacity-60" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <span
+              className="flex size-12 shrink-0 items-center justify-center rounded-[16px] text-white shadow-[0_8px_24px_-8px_rgb(99_102_241/0.9)]"
+              style={{
+                background: "linear-gradient(135deg, #7c5dfa 0%, #5b54f0 52%, #0ea5be 130%)",
+              }}
+            >
+              <Database className="size-6" strokeWidth={2.2} />
+            </span>
+            <div className="min-w-0">
+              <p className="kicker kicker-stage">Enterprise RAG Copilot</p>
+              <p className="mt-1.5 text-[20px] font-semibold leading-tight tracking-[-0.02em] text-[var(--color-stage-ink)]">
+                企业知识的「可验证」答案层
+              </p>
+              <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-stage-ink-muted)]">
+                产品版本 {PRODUCT_VERSION} · 公开只读演示 · 单实例部署
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+            <Badge tone="ink">Next.js 15</Badge>
+            <Badge tone="ink">FastAPI</Badge>
+            <Badge tone="ink">LangGraph</Badge>
+            <Badge tone="ink">Hybrid RAG</Badge>
+          </div>
+        </div>
+      </section>
 
       {/* --------------------------------------------------------- A: why */}
       <Card>

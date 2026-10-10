@@ -124,6 +124,7 @@ export default function AskPage() {
   return (
     <div className="space-y-5">
       <PageIntro
+        kicker="Ask"
         title="知识问答"
         subtitle="向企业知识库提问。AI 会先查找相关资料，再基于证据回答并标注来源。"
       />
@@ -316,7 +317,13 @@ export default function AskPage() {
       ) : null}
 
       {!loading && !response ? (
-        <AnswerPlaceholder hints={EXAMPLES.slice(0, 3)} />
+        <AnswerPlaceholder
+          hints={EXAMPLES.slice(0, 3)}
+          onHint={(hint) => {
+            setQuestion(hint);
+            inputRef.current?.focus();
+          }}
+        />
       ) : null}
 
       {/* session history */}

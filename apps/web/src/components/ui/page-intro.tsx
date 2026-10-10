@@ -6,18 +6,23 @@ import { cn } from "@/lib/utils";
  * The sticky topbar carries the short title; this block carries the *guidance* —
  * what the page is for, in the language of the person using it.
  *
- * V4.2: unified across every page. Same type scale, same rhythm, same hairline
- * underneath, so moving between pages no longer feels like moving between
- * products. The divider is a single faint line rather than a filled band — a
- * header that shouts costs first-screen height that this product cannot spare.
+ * V5: promoted from a caption to an editorial header. A page used to open with
+ * a 17px sentence that the eye skipped; it now opens with a tracked kicker, a
+ * 20px title and a hairline — the same rhythm on every page, which is what
+ * stops the product reading as separately-designed screens. The divider is
+ * still a single faint line rather than a filled band: a header that shouts
+ * costs first-screen height that this product cannot spare.
  */
 export function PageIntro({
+  kicker,
   title,
   subtitle,
   aside,
   className,
   divider = true,
 }: {
+  /** Small tracked label above the title, e.g. "Knowledge Base". */
+  kicker?: React.ReactNode;
   title: React.ReactNode;
   subtitle: React.ReactNode;
   aside?: React.ReactNode;
@@ -25,10 +30,11 @@ export function PageIntro({
   divider?: boolean;
 }) {
   return (
-    <div className={cn("pb-3", divider && "border-b border-[var(--color-line-faint)]", className)}>
+    <div className={cn("pb-3.5", divider && "border-b border-[var(--color-line-faint)]", className)}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <h2 className="text-[17px] font-semibold leading-6 tracking-[-0.014em] text-[var(--color-ink)]">
+          {kicker ? <p className="kicker mb-1.5">{kicker}</p> : null}
+          <h2 className="text-[20px] font-semibold leading-7 tracking-[-0.018em] text-[var(--color-ink)]">
             {title}
           </h2>
           <p className="mt-1.5 max-w-3xl text-[13px] leading-relaxed text-[var(--color-ink-muted)]">
@@ -47,7 +53,7 @@ export function PageIntro({
  * Used to explain an outcome in plain language *before* exposing the technical
  * trace, so a non-specialist is never forced through engineering vocabulary.
  *
- * V4.2: the step chain is now a set of quiet pills rather than bare text with
+ * V4.2: the step chain is a set of quiet pills rather than bare text with
  * arrow separators — it reads as a process at a glance, and the arrows are
  * demoted to spacing rather than glyphs.
  */

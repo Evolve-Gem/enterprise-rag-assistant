@@ -175,9 +175,13 @@ export function MainTaskBody({
  * Leads with the thing the user actually came for.
  *
  * Every result-bearing page renders one of these directly under the task panel,
- * so the answer is never below the explanation of the answer. It uses the
- * dedicated result surface — a 1% brand wash — so it reads as "this is what the
- * AI produced" rather than one more white card.
+ * so the answer is never below the explanation of the answer.
+ *
+ * V5: the header band is now a *stage* — deep ink with a whisper of aurora and
+ * an aurora hairline along its bottom edge. This is the second flagship moment
+ * (after the home hero): every result in the product opens with the same dark
+ * band, so "the AI produced this" is recognisable at a glance in both themes.
+ * The reading surface below stays light: ink is the frame, paper is the work.
  */
 export function ResultSection({
   label,
@@ -197,24 +201,34 @@ export function ResultSection({
   return (
     <section
       className={cn(
-        "rounded-[var(--radius-large)] border border-[var(--color-line-brand)]",
+        "overflow-hidden rounded-[var(--radius-large)] border border-[var(--color-line-brand)]",
         "bg-[var(--color-surface-result)] shadow-[var(--elevation-2)]",
         className,
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-line-brand)] px-4 py-3 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="relative flex flex-wrap items-center justify-between gap-2 overflow-hidden bg-[var(--color-stage)] px-4 py-3 sm:px-5">
+        <div aria-hidden className="aurora-field aurora-field-subtle" />
+        <div className="relative flex min-w-0 items-center gap-2">
           {icon ? (
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-stage-accent-soft)] text-[var(--color-stage-accent)]">
               {icon}
             </span>
           ) : null}
-          <h2 className="text-sm font-semibold tracking-[-0.008em] text-[var(--color-ink)]">
+          <h2 className="text-sm font-semibold tracking-[-0.008em] text-[var(--color-stage-ink)]">
             {label}
           </h2>
-          {meta ? <span className="text-2xs text-[var(--color-ink-muted)]">{meta}</span> : null}
+          {meta ? <span className="text-2xs text-[var(--color-stage-ink-muted)]">{meta}</span> : null}
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+        {actions ? <div className="relative flex flex-wrap items-center gap-2">{actions}</div> : null}
+        {/* The aurora hairline — same signature as the topbar. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px opacity-80"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgb(124 93 250 / 0.55) 18%, rgb(34 211 238 / 0.35) 62%, transparent 100%)",
+          }}
+        />
       </div>
       <div className="px-4 py-4 sm:px-5">{children}</div>
     </section>

@@ -120,6 +120,45 @@ export function CardFooter({
 }
 
 /**
+ * Editorial kicker — the small tracked label that opens a section.
+ *
+ * V5: this is the element that gives pages a *rhythm* instead of another row of
+ * identical headings. `index` renders a two-digit ordinal ("01") on long pages;
+ * `tone="stage"` switches it to stage colours when it sits on ink; `rule`
+ * draws a hairline out to the section edge.
+ */
+export function Kicker({
+  index,
+  tone = "light",
+  rule = false,
+  className,
+  children,
+}: {
+  index?: string;
+  tone?: "light" | "stage";
+  rule?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <p
+      className={cn(
+        "kicker",
+        tone === "stage" && "kicker-stage",
+        rule && "kicker-rule",
+        rule && tone === "stage" && "kicker-rule-stage",
+        className,
+      )}
+    >
+      {index ? (
+        <span className="font-mono tracking-[0.08em] opacity-80">{index}</span>
+      ) : null}
+      <span className="truncate">{children}</span>
+    </p>
+  );
+}
+
+/**
  * Small section label.
  *
  * Was uppercase + `ink-faint`; uppercase Latin tracking on a Chinese product

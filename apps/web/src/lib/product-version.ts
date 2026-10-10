@@ -13,25 +13,29 @@
  *   - PRODUCT version  — the thing a visitor sees (this file). Bumped when a
  *     release ships, and only then.
  *   - API version      — `backend/app/core/config.py: app_version = "3.0.0"`.
- *     It describes the HTTP surface. V4.0 / V4.1 / V4.2 changed no backend code,
- *     which is exactly why it has stayed at 3.0.0 across all three releases.
- *     Deliberately NOT changed here: the task forbids faking the frontend
- *     version by editing the backend constant.
+ *     It describes the HTTP surface. V4.0 / V4.1 / V4.2 / V5 changed no backend
+ *     code, which is exactly why it has stayed at 3.0.0 across all four
+ *     releases. Deliberately NOT changed here: editing the backend constant to
+ *     "match" the product version would be faking one version with the other.
  *
  * STATUS SEMANTICS
  *
- * `product-review` means the build is verified but NOT deployed. V4.2 is in that
- * state, so it must never render as "released" and must never show a release
- * date. `releasedAt` is only set for versions that are actually running on the
- * public deployment, and the dates below come from the release reports and the
- * deployment timestamps, not from memory:
+ * `product-review` means the build is verified but NOT deployed; it must never
+ * render as "released" and must never show a release date. `releasedAt` is only
+ * set for versions actually running on the public deployment, and the dates
+ * below come from the release reports and the deployment timestamps, not from
+ * memory:
  *
  *   V4.0 — docs/V4_RELEASE_REPORT.md 「发布日期：2026-09-25」,
  *          image rag-copilot-web:4.0.0 created 2026-09-25T18:31:16+08:00,
  *          commit 5396db2.
  *   V4.1 — docs/V4_1_RELEASE_REPORT.md, deployed 2026-10-06 17:22:34 +0800,
  *          commit ac27d58.
- *   V4.2 — not deployed; no date exists and none is invented here.
+ *   V4.2 — docs/V4_2_RELEASE_REPORT.md, deployed 2026-10-08 17:10:07 +0800,
+ *          commit 994fe38, image rag-copilot-web:4.2.0 (be3d64d438b3).
+ *   V5   — docs/V5_RELEASE_REPORT.md, deployed 2026-10-10, image
+ *          rag-copilot-web:5.0.0. Full-site visual rebrand (INK × AURORA);
+ *          frontend-only, backend untouched.
  */
 
 export type ReleaseStatus = "released" | "product-review";
@@ -47,12 +51,11 @@ export interface ReleaseEntry {
 }
 
 /** The version a visitor is looking at right now. */
-export const PRODUCT_VERSION = "V4.2";
+export const PRODUCT_VERSION = "V5";
 
 /**
- * Set to "released" as part of the V4.2 production release on 2026-10-08.
- * Before that it was "product-review", which is what the pre-release build
- * shipped with — the About page therefore said "待发布" while running V4.2 code.
+ * "released" as of the V5 production deployment on 2026-10-10.
+ * (V4.2 held "released" from its 2026-10-08 deployment until this release.)
  */
 export const PRODUCT_STATUS: ReleaseStatus = "released";
 
@@ -67,6 +70,22 @@ export const STATUS_LABEL: Record<ReleaseStatus, string> = {
 
 /** Newest first. */
 export const RELEASES: ReleaseEntry[] = [
+  {
+    version: "V5",
+    status: "released",
+    // The deployment date, not the date the acceptance review was written.
+    releasedAt: "2026-10-10",
+    title: "全站视觉品牌重塑",
+    summary: "INK × AURORA：以恒定墨色框架与 Stage 材质建立全站统一的品牌语言，重构首页信息布局与结果阅读体验。",
+    highlights: [
+      "深墨品牌导航框架：Sidebar / Topbar / 移动抽屉在两种主题下恒定墨色，产品首次拥有可识别的品牌面",
+      "Stage 材质：首页 Hero、品牌 masthead、Ask 控制台、Agent / Solution 流程条与全部结果头带使用统一的墨色舞台",
+      "极光信号系统：紫→青极光作为品牌信号色，只出现在墨面（active 状态 / 签名线 / 氛围光），浅色阅读面不受染",
+      "首页信息布局重构：连通式入口 Rail、编号示例列表、编号节点流水线与仪表盘式指标区",
+      "AI 结果阅读体验：结果以墨色头带开场、正文保持纸面浅色阅读宽度，引用编号不打断阅读",
+      "Light / Dark 双主题与 375 / 390 / 430 移动端统一精修（首屏入口完整、触控 44px、抽屉焦点管理）",
+    ],
+  },
   {
     version: "V4.2",
     status: "released",

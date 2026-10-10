@@ -1,6 +1,23 @@
 import { cn } from "@/lib/utils";
 
-type Tone = "neutral" | "accent" | "success" | "warning" | "danger" | "info";
+/**
+ * Badge tones.
+ *
+ * `ink-*` variants are for the dark chrome and stage surfaces: the semantic
+ * palette is tuned for light content and goes muddy on ink, so the ink tones
+ * re-state the same meanings with frame-appropriate luminance.
+ */
+type Tone =
+  | "neutral"
+  | "accent"
+  | "success"
+  | "warning"
+  | "danger"
+  | "info"
+  | "ink"
+  | "ink-accent"
+  | "ink-success"
+  | "ink-warning";
 
 const TONE: Record<Tone, string> = {
   neutral:
@@ -14,6 +31,13 @@ const TONE: Record<Tone, string> = {
   danger:
     "bg-[var(--color-danger-soft)] text-[var(--color-danger)] border-[var(--color-danger-line)]",
   info: "bg-[var(--color-info-soft)] text-[var(--color-info)] border-[var(--color-info-line)]",
+  ink: "bg-[var(--color-frame-hover)] text-[var(--color-frame-ink-soft)] border-[var(--color-frame-line-strong)]",
+  "ink-accent":
+    "bg-[var(--color-frame-accent-soft)] text-[var(--color-frame-accent)] border-[rgb(124_132_255/0.35)]",
+  "ink-success":
+    "bg-[rgb(95_221_144/0.10)] text-[#7ee2a8] border-[rgb(95_221_144/0.28)]",
+  "ink-warning":
+    "bg-[rgb(245_189_85/0.10)] text-[#f5c56a] border-[rgb(245_189_85/0.28)]",
 };
 
 export function Badge({
@@ -55,6 +79,10 @@ export function StatusDot({
     warning: "bg-[var(--color-warning)]",
     danger: "bg-[var(--color-danger)]",
     info: "bg-[var(--color-info)]",
+    ink: "bg-[var(--color-frame-ink-faint)]",
+    "ink-accent": "bg-[var(--color-frame-accent)]",
+    "ink-success": "bg-[#5fdd90]",
+    "ink-warning": "bg-[#f5bd55]",
   };
   return (
     <span className={cn("relative inline-flex size-2 shrink-0", className)} title={label}>

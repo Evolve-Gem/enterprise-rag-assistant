@@ -26,6 +26,7 @@ import { Card, CardContent, DefRow } from "@/components/ui/card";
 import { TD, TH, TR, Table } from "@/components/ui/data";
 import { Field, Select, Textarea } from "@/components/ui/field";
 import { PageIntro } from "@/components/ui/page-intro";
+import { StageStrip } from "@/components/ui/stage-strip";
 import {
   MainTaskBody,
   MainTaskHeader,
@@ -257,6 +258,7 @@ export default function AgentPage() {
   return (
     <div className="space-y-5">
       <PageIntro
+        kicker="Agent workspace"
         title="AI 任务"
         subtitle="告诉 Agent 你希望完成什么。它会自动识别任务类型，选择对应能力并执行。"
       />
@@ -264,6 +266,11 @@ export default function AgentPage() {
       {!hasOutput ? (
         /* ------------------------------------------------- IDLE: full width */
         <>
+          <StageStrip
+            steps={["描述目标", "识别意图", "选择能力", "执行工具", "生成结果"]}
+            aside={<>{activeEngine === "langgraph" ? "LangGraph" : activeEngine} 引擎</>}
+          />
+
           <MainTaskPanel>
             <MainTaskHeader
               title="要完成的任务"

@@ -194,6 +194,7 @@ export default function EvaluationPage() {
   return (
     <div className="space-y-5">
       <PageIntro
+        kicker="Evaluation"
         title="RAG 评测"
         subtitle="用固定测试集检验检索是否真的找到正确资料。选好参数运行一次，就能看到结果与结论。"
       />

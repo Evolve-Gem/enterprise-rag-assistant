@@ -22,6 +22,12 @@ type DetailTab = "evidence" | "trace" | "sources";
  * Nothing is hidden behind a "debug" flag: the retrieval evidence, the per-node
  * trace and the source list are all one click away, because that is the whole
  * point of a grounded assistant.
+ *
+ * V5: the provenance strip is now a *stage band* — deep ink with a whisper of
+ * aurora and an aurora hairline. Every result in the product opens with the
+ * same dark band, so "the AI produced this" is recognisable at a glance; the
+ * reading surface beneath it stays light, because ink is the frame and paper
+ * is the work.
  */
 export function AnswerCard({
   response,
@@ -40,58 +46,72 @@ export function AnswerCard({
   return (
     <article
       className={cn(
-        // The AI result surface: a 1% brand wash plus a brand hairline so it
-        // never reads as "just another white card" against the composer.
         "surface-result overflow-hidden rounded-[var(--radius-large)] border border-[var(--color-line-brand)]",
+        "shadow-[var(--elevation-2)]",
         className,
       )}
     >
-      {/* provenance strip */}
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--color-line-faint)] px-5 py-3">
+      {/* provenance strip — the stage band */}
+      <header className="relative flex flex-wrap items-center gap-x-3 gap-y-2 overflow-hidden bg-[var(--color-stage)] px-5 py-3">
+        <div aria-hidden className="aurora-field aurora-field-subtle" />
         {response.grounded ? (
-          <Badge tone="success">
+          <Badge tone="ink-success" className="relative">
             <CheckCircle2 className="size-3" />
             已溯源（{response.citations.length} 条引用）
           </Badge>
         ) : response.fallback_used ? (
-          <Badge tone="warning">
+          <Badge tone="ink-warning" className="relative">
             <AlertTriangle className="size-3" />
             知识库未命中 · 通用建议
           </Badge>
         ) : (
-          <Badge tone="warning">
+          <Badge tone="ink-warning" className="relative">
             <AlertTriangle className="size-3" />
             弱溯源
           </Badge>
         )}
 
-        <span className="flex items-center gap-1.5 text-2xs text-[var(--color-ink-muted)]">
+        <span className="relative flex items-center gap-1.5 text-2xs text-[var(--color-stage-ink-muted)]">
           <Gauge className="size-3" />
           {formatMs(response.latency_ms)}
         </span>
-        <span className="text-2xs text-[var(--color-ink-faint)]">·</span>
-        <span className="text-2xs text-[var(--color-ink-muted)]">{response.model || "—"}</span>
+        <span className="relative text-2xs text-[var(--color-stage-ink-faint)]">·</span>
+        <span className="relative text-2xs text-[var(--color-stage-ink-muted)]">
+          {response.model || "—"}
+        </span>
         {response.usage.total_tokens > 0 ? (
           <>
-            <span className="text-2xs text-[var(--color-ink-faint)]">·</span>
-            <span className="text-2xs text-[var(--color-ink-muted)]">
+            <span className="relative text-2xs text-[var(--color-stage-ink-faint)]">·</span>
+            <span className="relative text-2xs text-[var(--color-stage-ink-muted)]">
               {response.usage.total_tokens} tokens
             </span>
           </>
         ) : null}
         {response.prompt_version ? (
-          <Badge tone="neutral">prompt {response.prompt_version}</Badge>
+          <Badge tone="ink" className="relative">
+            prompt {response.prompt_version}
+          </Badge>
         ) : null}
 
-        <div className="ml-auto flex items-center gap-1.5">
-          <Button size="sm" variant="ghost" onClick={() => copy(response.answer)}>
+        <div className="relative ml-auto flex items-center gap-1.5">
+          <Button size="sm" variant="frame" onClick={() => copy(response.answer)}>
             <Copy className="size-3.5" />
             {copied ? "已复制" : "复制"}
           </Button>
         </div>
+
+        {/* the aurora hairline — the product's signature on every result */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px opacity-80"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgb(124 93 250 / 0.55) 18%, rgb(34 211 238 / 0.35) 62%, transparent 100%)",
+          }}
+        />
       </header>
 
-      {/* answer body */}
+      {/* answer body — paper */}
       <div className="px-5 py-4">
         <Markdown content={response.answer} onCitation={onCitation} />
       </div>
@@ -193,34 +213,50 @@ export function AnswerCard({
   );
 }
 
-/** Placeholder shown before the first question is asked. */
-export function AnswerPlaceholder({ hints }: { hints: string[] }) {
+/**
+ * Placeholder shown before the first question is asked.
+ *
+ * V5: this became the Ask page's stage moment. When the page is idle the ink
+ * panel carries the "how this works" promise and the example prompts (now
+ * clickable — they prefill the composer, like the home page examples). Once a
+ * result arrives the placeholder yields to the AnswerCard, so the page always
+ * has exactly one dark object on it — the same discipline as every other page.
+ */
+export function AnswerPlaceholder({
+  hints,
+  onHint,
+}: {
+  hints: string[];
+  onHint?: (hint: string) => void;
+}) {
   return (
-    // Was a dashed-strong box at py-14: the single largest dead area in the
-    // product (~340px of empty panel to say one sentence), and the only dashed
-    // outline left after the shared empty states moved to a quiet surface.
-    <div className="surface-subtle flex flex-col items-center gap-3 rounded-[var(--radius-large)] border border-[var(--color-line-faint)] px-6 py-7 text-center">
-      <span className="flex size-9 items-center justify-center rounded-full bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-        <Wand2 className="size-4" />
-      </span>
-      <div className="space-y-1">
-        <p className="text-[13px] font-medium text-[var(--color-ink)]">开始提问</p>
-        <p className="mx-auto max-w-md text-xs leading-relaxed text-[var(--color-ink-muted)]">
-          回答会标注引用编号，点击编号可查看被引用的原文片段与检索分数。
-        </p>
-      </div>
-      {hints.length > 0 ? (
-        <div className="mt-0.5 flex flex-wrap items-center justify-center gap-1.5">
-          {hints.map((hint) => (
-            <span
-              key={hint}
-              className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1 text-2xs text-[var(--color-ink-muted)]"
-            >
-              {hint}
-            </span>
-          ))}
+    <div className="stage-panel relative px-6 py-7 text-center">
+      <div aria-hidden className="aurora-field aurora-field-subtle opacity-60" />
+      <div className="relative flex flex-col items-center gap-3">
+        <span className="flex size-10 items-center justify-center rounded-full bg-[var(--color-stage-accent-soft)] text-[var(--color-stage-accent)]">
+          <Wand2 className="size-4" />
+        </span>
+        <div className="space-y-1">
+          <p className="text-[14px] font-medium text-[var(--color-stage-ink)]">开始提问</p>
+          <p className="mx-auto max-w-md text-xs leading-relaxed text-[var(--color-stage-ink-muted)]">
+            回答会标注引用编号，点击编号可查看被引用的原文片段与检索分数。
+          </p>
         </div>
-      ) : null}
+        {hints.length > 0 ? (
+          <div className="mt-0.5 flex flex-wrap items-center justify-center gap-1.5">
+            {hints.map((hint) => (
+              <button
+                key={hint}
+                type="button"
+                onClick={() => onHint?.(hint)}
+                className="rounded-full border border-[var(--color-stage-line-strong)] bg-[rgb(255_255_255/0.06)] px-2.5 py-1 text-2xs text-[var(--color-stage-ink-soft)] transition-colors duration-[var(--motion-fast)] hover:bg-[rgb(255_255_255/0.12)] hover:text-[var(--color-stage-ink)]"
+              >
+                {hint}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

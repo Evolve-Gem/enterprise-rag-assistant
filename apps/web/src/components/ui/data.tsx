@@ -67,6 +67,8 @@ export function CompactMetric({
   hint,
   icon,
   tone = "neutral",
+  plain = false,
+  size = "md",
   className,
 }: {
   label: string;
@@ -74,6 +76,10 @@ export function CompactMetric({
   hint?: React.ReactNode;
   icon?: React.ReactNode;
   tone?: "neutral" | "accent" | "success" | "warning" | "danger";
+  /** Places the tile inside an instrument board (grid supplies the hairline). */
+  plain?: boolean;
+  /** `lg` promotes the value to the display numeral used on board layouts. */
+  size?: "md" | "lg";
   className?: string;
 }) {
   const toneClass: Record<string, string> = {
@@ -88,6 +94,7 @@ export function CompactMetric({
     <div
       className={cn(
         "min-w-0 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2.5",
+        plain && "rounded-none border-0 bg-transparent px-0 py-0",
         className,
       )}
     >
@@ -95,7 +102,12 @@ export function CompactMetric({
         {icon ? <span className={cn("shrink-0", toneClass[tone])}>{icon}</span> : null}
         <p className="min-w-0 truncate text-2xs text-[var(--color-ink-faint)]">{label}</p>
       </div>
-      <p className="mt-1 truncate text-lg font-semibold leading-tight tabular-nums text-[var(--color-ink)]">
+      <p
+        className={cn(
+          "mt-1 truncate font-semibold leading-tight tabular-nums text-[var(--color-ink)]",
+          size === "lg" ? "metric-value metric-value-lg" : "text-lg",
+        )}
+      >
         {value}
       </p>
       {hint ? (

@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost" | "outline" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "outline" | "danger" | "frame" | "stage";
 type Size = "sm" | "md" | "lg" | "icon";
 
 /**
@@ -15,6 +15,11 @@ type Size = "sm" | "md" | "lg" | "icon";
  * primary button now carries a soft brand-tinted shadow that deepens on hover,
  * so the feedback reads as light rather than as a colour swap; outline buttons
  * are elevated surfaces instead of bare borders.
+ *
+ * V5 adds `frame` — the ghost button for the ink chrome. It exists as its own
+ * variant (rather than a call-site className) because hover colours conflict
+ * with `ghost`, and conflicting Tailwind utilities resolve by stylesheet order,
+ * not by the order they were concatenated.
  */
 const VARIANT: Record<Variant, string> = {
   primary: cn(
@@ -43,6 +48,16 @@ const VARIANT: Record<Variant, string> = {
     "bg-[var(--color-danger)] text-white",
     "shadow-[0_1px_2px_rgb(16_16_24/0.12)]",
     "hover:bg-[color-mix(in_oklab,var(--color-danger)_88%,black)]",
+  ),
+  frame: cn(
+    "text-[var(--color-frame-ink-soft)]",
+    "hover:bg-[var(--color-frame-hover)] hover:text-[var(--color-frame-ink)]",
+  ),
+  // The secondary button for stage surfaces: a glass chip of light, not a
+  // white slab (white reads as a hole punched in the panel).
+  stage: cn(
+    "border border-[var(--color-stage-line-strong)] bg-[rgb(255_255_255/0.06)] text-[var(--color-stage-ink)]",
+    "hover:border-[rgb(255_255_255/0.24)] hover:bg-[rgb(255_255_255/0.12)]",
   ),
 };
 

@@ -59,6 +59,7 @@ export default function GapsPage() {
   return (
     <div className="space-y-5">
       <PageIntro
+        kicker="Knowledge gaps"
         title="知识洞察"
         subtitle="按预设资料类型核对当前知识库覆盖了什么、还缺什么，并给出可执行的补充清单。"
       />

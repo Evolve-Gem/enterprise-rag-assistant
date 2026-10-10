@@ -78,7 +78,9 @@
   --color-ink: #101014;
   --color-ink-soft: #3b3b45;
   --color-ink-muted: #63636f;
-  --color-ink-faint: #7c7c88;
+  /* V5 contrast fix: measured 4.12:1 on white and 3.75:1 on the canvas —
+     below AA. Raised to >=4.5:1 on white / subtle / inset / canvas. */
+  --color-ink-faint: #6f6f7a;
   --color-ink-inverse: #fafafa;
 
   /* =======================================================================
@@ -143,7 +145,7 @@
   --radius-small: 8px;   /* chips, inputs, small controls */
   --radius-medium: 12px; /* ordinary cards */
   --radius-large: 16px;  /* primary task panel, result surface */
-  --radius-hero: 20px;   /* hero only */
+  --radius-hero: 24px;   /* hero + stage panels */
 
   /* =======================================================================
      8. ELEVATION — four levels
@@ -882,3 +884,246 @@
     transform: none !important;
   }
 }
+
+/* ===========================================================================
+   V5 REBRAND — "INK × AURORA"（墨色框架 × 极光信号）
+   ===========================================================================
+   V4.2 made every surface correct. This release makes the product *recognis-
+   able*. Three new ideas, each structural rather than cosmetic:
+
+   1. INK FRAME. The navigation chrome (sidebar, topbar, mobile drawer) becomes
+      a deep ink material in BOTH themes. The whole app used to be white-on-
+      grey from edge to edge, so the frame had no presence and every page read
+      as "another dashboard". A constant dark frame with a bright working
+      canvas is the single most perceptible change in this release — it is not
+      "dark mode", it is a material, like the bezel on a device.
+
+   2. STAGE MATERIAL. One deep-ink surface, reserved for flagship moments ONLY:
+      the home hero, the Ask result header, the agent console, the solution
+      cover, the About masthead. Glass everywhere is a template; ink in five
+      deliberate places is a language. Stage text uses fixed light tokens that
+      do not flip with the theme, because the stage itself does not flip.
+
+   3. AURORA SIGNAL. A violet→cyan aurora held under ~35% alpha that appears
+      only on ink: frame active states, stage ambience, the pipeline rail. It
+      is the one signature the brand owns, so it never touches light surfaces.
+
+   What still flips with the theme: canvas, surfaces, borders, text, semantic
+   colours — everything the reader works on. What never flips: frame + stage.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* ---- 12. INK — the frame material (constant across themes) ---------- */
+  --color-frame: #101117;
+  --color-frame-deep: #0b0c11;
+  --color-frame-line: rgb(255 255 255 / 0.07);
+  --color-frame-line-strong: rgb(255 255 255 / 0.13);
+  --color-frame-ink: #f3f4f8;
+  --color-frame-ink-soft: #b6b9c8;
+  --color-frame-ink-muted: #8d90a2;
+  /* Measured 3.62:1 on the frame (below AA); raised to 4.83:1. */
+  --color-frame-ink-faint: #7d8093;
+  --color-frame-hover: rgb(255 255 255 / 0.06);
+  --color-frame-active: rgb(124 132 255 / 0.17);
+  --color-frame-accent: #a8aeff;
+  --color-frame-accent-soft: rgb(124 132 255 / 0.14);
+
+  /* ---- 13. STAGE — flagship ink surfaces (constant across themes) ----- */
+  --color-stage: #0c0d13;
+  --color-stage-deep: #08090d;
+  --color-stage-line: rgb(255 255 255 / 0.08);
+  --color-stage-line-strong: rgb(255 255 255 / 0.15);
+  --color-stage-ink: #f4f5f9;
+  --color-stage-ink-soft: #c3c5d3;
+  --color-stage-ink-muted: #969aac;
+  --color-stage-ink-faint: #7d8093;
+  --color-stage-accent: #aab0ff;
+  --color-stage-accent-soft: rgb(124 132 255 / 0.16);
+  --color-stage-success: #5fdd90;
+  --color-stage-warning: #f5bd55;
+  --color-stage-danger: #f89a9a;
+
+  /* ---- 14. AURORA — the signal glow (ink surfaces only) --------------- */
+  --aurora-violet: rgb(124 93 250 / 0.34);
+  --aurora-indigo: rgb(99 102 241 / 0.20);
+  --aurora-cyan: rgb(14 165 190 / 0.26);
+  --aurora-wash: rgb(124 132 255 / 0.10);
+
+  /* ---- 15. STAGE ELEVATION -------------------------------------------- */
+  --elevation-stage:
+    0 1px 2px rgb(0 0 0 / 0.35),
+    0 18px 48px -24px rgb(0 0 0 / 0.55),
+    0 0 90px -46px rgb(124 93 250 / 0.55);
+}
+
+/* Dark theme: the frame/toolkit keeps its ink identity but lifts 1 step so it
+   separates from the near-black canvas without becoming a grey slab. */
+.dark {
+  --color-frame: #0e0f15;
+  --color-frame-deep: #0a0b10;
+  --color-stage: #0e0f16;
+  --color-stage-deep: #0a0b10;
+  --aurora-violet: rgb(124 93 250 / 0.30);
+  --aurora-cyan: rgb(14 165 190 / 0.22);
+}
+
+@layer utilities {
+  /* ---- ink frame ------------------------------------------------------ */
+  .ink-frame {
+    background-color: var(--color-frame);
+    color: var(--color-frame-ink);
+  }
+
+  /* ---- stage ---------------------------------------------------------- */
+  /* The flagship ink surface. Add `.grain` for texture and an explicit
+     `.aurora-field` layer where the moment justifies it. */
+  .stage-panel {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-hero);
+    border: 1px solid var(--color-stage-line);
+    background: linear-gradient(180deg, #15161e 0%, var(--color-stage) 44%, var(--color-stage-deep) 100%);
+    box-shadow: var(--elevation-stage);
+    color: var(--color-stage-ink);
+  }
+
+  /* The lit top rim — 1px of light sells "a surface caught the light" more
+     than any border colour can. */
+  .stage-panel::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(255 255 255 / 0.30) 18%,
+      rgb(255 255 255 / 0.10) 62%,
+      transparent 100%
+    );
+  }
+
+  /* Aurora backdrop for a stage. Painted behind content; oversized so the
+     falloff spills past the panel edge. */
+  .aurora-field {
+    position: absolute;
+    inset: -30% -12% auto -12%;
+    height: 130%;
+    pointer-events: none;
+    background:
+      radial-gradient(58% 88% at 10% 2%, var(--aurora-violet) 0%, transparent 64%),
+      radial-gradient(46% 76% at 32% 0%, var(--aurora-indigo) 0%, transparent 68%),
+      radial-gradient(52% 90% at 96% 6%, var(--aurora-cyan) 0%, transparent 66%);
+    filter: blur(32px);
+  }
+
+  .aurora-field-subtle {
+    opacity: 0.55;
+  }
+
+  /* ---- kicker --------------------------------------------------------- */
+  /* The small editorial label above a section title. Numbered kickers
+     ("01 · 从这里开始") are what gives the page rhythm instead of another
+     row of identical headings. */
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+
+  .kicker-stage {
+    color: var(--color-stage-accent);
+  }
+
+  /* A hairline that runs out from the kicker to the section edge. */
+  .kicker-rule::after {
+    content: "";
+    align-self: center;
+    height: 1px;
+    flex: 1 1 auto;
+    min-width: 2rem;
+    background: linear-gradient(90deg, var(--color-line-strong), transparent);
+    opacity: 0.7;
+  }
+
+  .kicker-rule-stage::after {
+    background: linear-gradient(90deg, var(--color-stage-line-strong), transparent);
+  }
+
+  /* ---- stage text roles (never flip) ---------------------------------- */
+  .text-stage-ink {
+    color: var(--color-stage-ink);
+  }
+  .text-stage-soft {
+    color: var(--color-stage-ink-soft);
+  }
+  .text-stage-muted {
+    color: var(--color-stage-ink-muted);
+  }
+  .text-stage-faint {
+    color: var(--color-stage-ink-faint);
+  }
+  .text-stage-accent {
+    color: var(--color-stage-accent);
+  }
+
+  /* Focus rings on ink: the light-theme accent (#4f46e5) is too close to the
+     ink fill to read as a focus indicator, so ink surfaces use the lifted
+     frame/stage accent instead. WCAG 2.2 SC 1.4.11 (3:1) is why this rule
+     exists at all. */
+  .ink-frame :focus-visible,
+  .stage-panel :focus-visible {
+    outline-color: var(--color-frame-accent);
+  }
+
+  /* ---- metric display -------------------------------------------------- */
+  /* The one place numbers are allowed to be large. */
+  .metric-value {
+    font-size: 1.5rem;
+    font-weight: 650;
+    letter-spacing: -0.022em;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-value-lg {
+    font-size: 1.875rem;
+  }
+
+  /* ---- rail ------------------------------------------------------------ */
+  /* A connected multi-column surface: one panel, interior hairlines, no gaps.
+     This is what replaces the "three identical cards" template pattern. */
+  .rail {
+    display: grid;
+    grid-template-columns: 0; /* overridden per usage */
+  }
+}
+
+/* ---- aurora drift ---------------------------------------------------------
+   A 26s ambient drift. It exists so a stage quietly breathes; the global
+   reduced-motion rule removes it entirely for anyone who asked for stillness.
+--------------------------------------------------------------------------- */
+@keyframes copilot-aurora {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(2%, 1.5%, 0) scale(1.06);
+    opacity: 1;
+  }
+}
+
+.animate-aurora {
+  animation: copilot-aurora 26s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
